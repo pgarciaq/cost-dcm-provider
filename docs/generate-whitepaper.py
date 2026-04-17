@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Generate white paper DOCX from Red Hat Formal Document template."""
-import shutil, os, zipfile, re
+"""Generate white paper DOCX and PDF from Red Hat Formal Document template."""
+import shutil, os, zipfile, subprocess
 from pathlib import Path
 from xml.sax.saxutils import escape
 
@@ -426,3 +426,17 @@ with zipfile.ZipFile(OUTPUT, "w", zipfile.ZIP_DEFLATED) as zf:
 
 print(f"Generated: {OUTPUT}")
 print(f"  Image: {img_w}x{img_h}px -> {cx}x{cy} EMU ({cx/914400:.1f}x{cy/914400:.1f} inches)")
+
+# === GENERATE PDF via LibreOffice ===
+PDF_OUTPUT = OUTPUT.with_suffix(".pdf")
+print(f"Converting to PDF...")
+result = subprocess.run(
+    ["libreoffice", "--headless", "--convert-to", "pdf", "--outdir", str(OUTPUT.parent), str(OUTPUT)],
+    capture_output=True, text=True, timeout=120,
+)
+if result.returncode == 0 and PDF_OUTPUT.exists():
+    print(f"Generated: {PDF_OUTPUT} ({PDF_OUTPUT.stat().st_size / 1024:.0f} KB)")
+else:
+    print(f"PDF conversion failed (exit {result.returncode})")
+    if result.stderr:
+        print(f"  stderr: {result.stderr.strip()}")
