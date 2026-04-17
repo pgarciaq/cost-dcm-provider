@@ -1,0 +1,79 @@
+digraph DeploymentTopology {
+    graph [
+        fontname="Helvetica,Arial,sans-serif" fontsize=12
+        bgcolor="white" pad="0.4" nodesep=0.4 ranksep=0.6
+        compound=true newrank=true
+    ];
+    node [
+        fontname="Helvetica,Arial,sans-serif" fontsize=10
+        shape=box style="rounded,filled" penwidth=1.5
+    ];
+    edge [
+        fontname="Helvetica,Arial,sans-serif" fontsize=9
+        color="#555555" penwidth=1.2
+    ];
+
+    subgraph cluster_mgmt {
+        label=<<b>Management Cluster (ACM Hub)</b>>
+        fontsize=12 fontcolor="#151515"
+        style="rounded,filled" color="#666" fillcolor="#FAFAFA" penwidth=2
+
+        subgraph cluster_dcm_stack {
+            label=<<b>DCM Stack</b>>
+            fontsize=10 fontcolor="#151515"
+            style="rounded,filled" color="#CC0000" fillcolor="#FFF0F0" penwidth=1.5
+
+            dcm_gw [label="Gateway" fillcolor="#EE0000" color="#CC0000" fontcolor="white" fontsize=9]
+            dcm_cat [label="Catalog" fillcolor="#EE0000" color="#CC0000" fontcolor="white" fontsize=9]
+            dcm_plc [label="Placement" fillcolor="#EE0000" color="#CC0000" fontcolor="white" fontsize=9]
+            dcm_pol [label="Policy" fillcolor="#EE0000" color="#CC0000" fontcolor="white" fontsize=9]
+            dcm_spm [label="SPM" fillcolor="#EE0000" color="#CC0000" fontcolor="white" fontsize=9]
+            dcm_nats [label="NATS" fillcolor="#E0E0E0" color="#999" fontcolor="#151515" fontsize=9]
+            dcm_pg [label="PostgreSQL" fillcolor="#E0E0E0" color="#999" fontcolor="#151515" fontsize=9]
+        }
+
+        subgraph cluster_bridge_stack {
+            label=<<b>DCM-Koku Bridge</b>>
+            fontsize=10 fontcolor="#151515"
+            style="rounded,filled" color="#6644AA" fillcolor="#F0E8FF" penwidth=1.5
+
+            br_nats [label="NATS consumer" fillcolor="#7B68EE" color="#5B48CE" fontcolor="white" fontsize=9]
+            br_koku [label="Koku client" fillcolor="#7B68EE" color="#5B48CE" fontcolor="white" fontsize=9]
+            br_id [label="ID mapper" fillcolor="#7B68EE" color="#5B48CE" fontcolor="white" fontsize=9]
+            br_cost [label="Cost proxy" fillcolor="#7B68EE" color="#5B48CE" fontcolor="white" fontsize=9]
+            br_pg [label="PostgreSQL" fillcolor="#E0E0E0" color="#999" fontcolor="#151515" fontsize=9]
+        }
+
+        subgraph cluster_koku_stack {
+            label=<<b>Koku Stack</b>>
+            fontsize=10 fontcolor="#151515"
+            style="rounded,filled" color="#228B22" fillcolor="#F0FFF0" penwidth=1.5
+
+            k_api [label="Koku API" fillcolor="#2E8B57" color="#1A6B1A" fontcolor="white" fontsize=9]
+            k_masu [label="Masu" fillcolor="#2E8B57" color="#1A6B1A" fontcolor="white" fontsize=9]
+            k_work [label="Workers" fillcolor="#2E8B57" color="#1A6B1A" fontcolor="white" fontsize=9]
+            k_list [label="Listener" fillcolor="#2E8B57" color="#1A6B1A" fontcolor="white" fontsize=9]
+            k_pg [label="PostgreSQL" fillcolor="#E0E0E0" color="#999" fontcolor="#151515" fontsize=9]
+            k_redis [label="Redis" fillcolor="#E0E0E0" color="#999" fontcolor="#151515" fontsize=9]
+        }
+
+        acm_sp [label="ACM Cluster SP" fillcolor="#4169E1" color="#2850A8" fontcolor="white"]
+        kv_sp [label="KubeVirt VM SP" fillcolor="#4169E1" color="#2850A8" fontcolor="white"]
+
+        policy_note [label="ACM Policies:\n• Deploy koku-metrics-operator on dcm clusters\n• Configure operator with Koku ingress URL" shape=note fillcolor="#FFFDE0" color="#B8860B" fontcolor="#151515" fontsize=9]
+    }
+
+    subgraph cluster_hosted {
+        label=<<b>Hosted Clusters (HyperShift)</b>>
+        fontsize=11 fontcolor="#151515"
+        style="rounded,filled" color="#B8860B" fillcolor="#FFFFF0" penwidth=1.5
+
+        hc_a [label="Hosted Cluster A\nkoku-metrics-op\n→ uploads to Koku" fillcolor="#DAA520" color="#B8860B" fontcolor="white"]
+        hc_b [label="Hosted Cluster B\nkoku-metrics-op\n→ uploads to Koku" fillcolor="#DAA520" color="#B8860B" fontcolor="white"]
+    }
+
+    dcm_spm -> acm_sp [style=invis]
+    acm_sp -> hc_a [label="HyperShift" color="#B8860B" fontcolor="#B8860B"]
+    acm_sp -> hc_b [color="#B8860B"]
+    hc_a -> k_api [label="uploads" style=dashed color="#228B22" fontcolor="#228B22" constraint=false]
+}

@@ -973,28 +973,15 @@ engine → SPRM → cost SP.
 
 ### Instance Lifecycle
 
-```
-Bridge/Operator      Catalog merges     Placement evaluates    SPRM calls
-creates instance   → defaults +       → policies (rate       → koku-cost-provider
-                      values             governance, budget)    POST /instances
-                                                                   │
-                                         ┌─────────────────────────┘
-                                         ▼
-                               SP creates Koku Source
-                               SP creates Koku Cost Model
-                                 (if cost_model in spec)
-                               SP publishes PROVISIONING
-                                         │
-                               Operator uploads first data
-                                         │
-                               SP detects data, publishes READY
-                                         │
-                                         ▼
-                               Metering data available via
-                                 GET /usage/{id}/compute
-                               Cost reports available via
-                                 GET /cost-reports/{id}
-                                 (if cost model assigned)
+```mermaid
+flowchart TB
+    A["Bridge/Operator creates instance"] --> B["Catalog merges defaults + values"]
+    B --> C["Placement evaluates policies\n(rate governance, budget)"]
+    C --> D["SPRM calls koku-cost-provider\nPOST /instances"]
+    D --> E["SP creates Koku Source\nSP creates Koku Cost Model\n(if cost_model in spec)\nSP publishes PROVISIONING"]
+    E --> F["Operator uploads first data"]
+    F --> G["SP detects data, publishes READY"]
+    G --> H["Metering data available via\nGET /usage/{id}/compute\nCost reports available via\nGET /cost-reports/{id}"]
 ```
 
 ---
@@ -1008,42 +995,24 @@ and bridge automation once. After that, every cluster provisioned through DCM
 automatically gets metering/cost tracking at the appropriate tier — no human
 intervention per cluster.
 
-```
- Operator (one-time)     ACM Cluster SP     NATS         Bridge          DCM Catalog
-  │                        │                  │             │                │
-  │  Configure catalog     │                  │             │                │
-  │  items, policies,      │                  │             │                │
-  │  bridge label→tier     │                  │             │                │
-  │  mapping (done once)   │                  │             │                │
-  │                        │                  │             │                │
-  │                   ...later, a tenant provisions a cluster...             │
-  │                        │                  │             │                │
-  │                        │  Cluster READY   │             │                │
-  │                        │  CloudEvent ────►│             │                │
-  │                        │                  │  1. Event ─►│                │
-  │                        │                  │             │                │
-  │                        │                  │             │  2. Cluster    │
-  │                        │                  │             │     already    │
-  │                        │                  │             │     tracked?   │
-  │                        │                  │             │     No →       │
-  │                        │                  │             │                │
-  │                        │                  │             │  3. Read       │
-  │                        │                  │             │     cluster    │
-  │                        │                  │             │     labels →   │
-  │                        │                  │             │     select     │
-  │                        │                  │             │     catalog    │
-  │                        │                  │             │     item       │
-  │                        │                  │             │                │
-  │                        │                  │             │  4. POST ─────►│
-  │                        │                  │             │     Create     │
-  │                        │                  │             │     instance   │
-  │                        │                  │             │                │
-  │                        │                  │             │     (normal    │
-  │                        │                  │             │      DCM flow: │
-  │                        │                  │             │      catalog → │
-  │                        │                  │             │      policy →  │
-  │                        │                  │             │      SPRM →    │
-  │                        │                  │             │      SP)       │
+```mermaid
+sequenceDiagram
+    participant Op as Operator (one-time)
+    participant ACM as ACM Cluster SP
+    participant NATS as NATS
+    participant Bridge as Bridge
+    participant DCM as DCM Catalog
+
+    Op->>Op: Configure catalog items, policies,<br/>bridge label→tier mapping (done once)
+
+    Note over ACM,DCM: ...later, a tenant provisions a cluster...
+
+    ACM->>NATS: Cluster READY CloudEvent
+    NATS->>Bridge: 1. Event delivered
+    Bridge->>Bridge: 2. Cluster already tracked? No
+    Bridge->>Bridge: 3. Read cluster labels →<br/>select catalog item
+    Bridge->>DCM: 4. POST: Create cost instance
+    Note over DCM: Normal DCM flow:<br/>catalog → policy → SPRM → SP
 ```
 
 The bridge selects the catalog item based on the cluster's labels:
@@ -1069,23 +1038,26 @@ instance — it's infrastructure policy, like monitoring or logging.
 After cost tracking is set up (automatically by the bridge), tenants query
 their metering and cost data through the cost SP's read-only API.
 
-```
- Tenant                  DCM Gateway / CLI        koku-cost-provider       Koku
-  │                            │                         │                  │
-  │  "How much is my           │                         │                  │
-  │   cluster costing?"        │                         │                  │
-  │                            │                         │                  │
-  │  GET /usage/{id}/compute ─►│────────────────────────►│                  │
-  │                            │                         │  GET ──────────►│
-  │                            │                         │  /reports/ocp/   │
-  │                            │                         │  compute/?filter │
-  │  ◄── usage data ───────────│◄────────────────────────│◄── usage data ──│
-  │                            │                         │                  │
-  │  GET /cost-reports/{id} ──►│────────────────────────►│                  │
-  │                            │                         │  GET ──────────►│
-  │                            │                         │  /reports/ocp/   │
-  │                            │                         │  costs/?filter   │
-  │  ◄── cost data ────────────│◄────────────────────────│◄── cost data ──│
+```mermaid
+sequenceDiagram
+    participant T as Tenant
+    participant GW as DCM Gateway / CLI
+    participant SP as koku-cost-provider
+    participant K as Koku
+
+    T->>GW: GET /usage/{id}/compute
+    GW->>SP: Forward request
+    SP->>K: GET /reports/ocp/compute/?filter
+    K-->>SP: usage data
+    SP-->>GW: usage data
+    GW-->>T: usage data
+
+    T->>GW: GET /cost-reports/{id}
+    GW->>SP: Forward request
+    SP->>K: GET /reports/ocp/costs/?filter
+    K-->>SP: cost data
+    SP-->>GW: cost data
+    GW-->>T: cost data
 ```
 
 The tenant sees costs for **their** clusters only — filtered by the DCM
@@ -1098,32 +1070,20 @@ A **secondary workflow** for operator overrides: switching a cluster to a
 different tier, applying custom rates to a specific cluster, or handling
 edge cases the automation doesn't cover.
 
-```
- Operator                DCM                      koku-cost-provider       Koku
-  │                       │                              │                  │
-  │  1. Order "Custom     │                              │                  │
-  │     Cost Tracking"    │                              │                  │
-  │     for cluster X ──► │                              │                  │
-  │                       │  2. Catalog: merge defaults   │                  │
-  │                       │     + operator values         │                  │
-  │                       │                              │                  │
-  │                       │  3. Placement: evaluate       │                  │
-  │                       │     policies (rate            │                  │
-  │                       │     governance)               │                  │
-  │                       │                              │                  │
-  │                       │  4. SPRM: POST ─────────────►│                  │
-  │                       │     /instances?id=xxx         │                  │
-  │                       │     body: {spec: ...}         │                  │
-  │                       │                              │                  │
-  │                       │                              │  5-8. Validate,  │
-  │                       │                              │  resolve, create │
-  │                       │                              │  source + cost   │
-  │                       │                              │  model in Koku   │
-  │                       │                              │                  │
-  │                       │  9. ◄── {id, PROVISIONING} ──│                  │
-  │                       │                              │                  │
-  │  10. Instance created │                              │                  │
-  │      (PROVISIONING) ◄─│                              │                  │
+```mermaid
+sequenceDiagram
+    participant Op as Operator
+    participant DCM as DCM
+    participant SP as koku-cost-provider
+    participant K as Koku
+
+    Op->>DCM: 1. Order "Custom Cost Tracking"<br/>for cluster X
+    DCM->>DCM: 2. Catalog: merge defaults + operator values
+    DCM->>DCM: 3. Placement: evaluate policies<br/>(rate governance)
+    DCM->>SP: 4. SPRM: POST /instances?id=xxx
+    SP->>K: 5-8. Validate, resolve,<br/>create source + cost model
+    SP-->>DCM: 9. {id, PROVISIONING}
+    DCM-->>Op: 10. Instance created (PROVISIONING)
 ```
 
 If the cluster already has a cost instance (from automation), the operator
@@ -1134,30 +1094,20 @@ catalog item. In v2, in-place updates could be supported.
 
 When a cluster is deleted, its cost instance should be cleaned up.
 
-```
- User                    DCM                      Bridge              koku-cost-provider
-  │                       │                         │                       │
-  │  Delete cluster X ──► │                         │                       │
-  │                       │  SPRM deletes cluster   │                       │
-  │                       │  instance               │                       │
-  │                       │                         │                       │
-  │                       │  NATS: dcm.status.cluster│                      │
-  │                       │  {status: DELETED} ─────►│                       │
-  │                       │                         │                       │
-  │                       │                         │  Find cost instance   │
-  │                       │                         │  for this cluster     │
-  │                       │                         │                       │
-  │                       │  ◄── DELETE /service-type│instances/{cost-id} ──│
-  │                       │      (via SPRM API)     │  (deferred=true)     │
-  │                       │                         │                       │
-  │                       │  SPRM calls SP ─────────────────────────────────►│
-  │                       │  DELETE /instances/{id}  │                       │
-  │                       │                         │                       │
-  │                       │                         │               Pause   │
-  │                       │                         │               source  │
-  │                       │                         │               Delete  │
-  │                       │                         │               cost    │
-  │                       │                         │               model   │
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant DCM as DCM
+    participant Bridge as Bridge
+    participant SP as koku-cost-provider
+
+    U->>DCM: Delete cluster X
+    DCM->>DCM: SPRM deletes cluster instance
+    DCM->>Bridge: NATS: dcm.status.cluster<br/>{status: DELETED}
+    Bridge->>Bridge: Find cost instance for this cluster
+    Bridge->>DCM: DELETE /service-type-instances/{cost-id}<br/>(via SPRM API, deferred=true)
+    DCM->>SP: SPRM calls SP: DELETE /instances/{id}
+    SP->>SP: Pause source, delete cost model
 ```
 
 The bridge triggers the delete through DCM's standard SPRM API (using
@@ -1352,89 +1302,7 @@ fail with "policy response missing selected provider".
 
 ## 9. Architecture Summary
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                          DCM Control Plane                               │
-│                                                                         │
-│  Tenant                       Operator (one-time setup)                 │
-│  "Give me a cluster" ──┐      configures catalog items,                 │
-│                         │      policies, bridge label mapping            │
-│                         │                                               │
-│                         ▼                                               │
-│                   ┌──────────┐                                          │
-│                   │ Catalog  │ (cluster items)                          │
-│                   └────┬─────┘                                          │
-│                        │                                                │
-│                        ▼                                                │
-│                   ┌──────────┐                                          │
-│                   │Placement │ → Policy (budget check) → SPRM           │
-│                   └────┬─────┘                                          │
-│                        │                                                │
-│                        ▼                                                │
-│                   ┌──────────────────┐                                  │
-│                   │ ACM Cluster SP   │                                  │
-│                   │  Creates cluster │                                  │
-│                   │  Publishes READY │                                  │
-│                   └────────┬─────────┘                                  │
-│                            │                                            │
-│                       NATS │ dcm.status.cluster                         │
-│                            ▼                                            │
-│  ┌─────────────────────────────────────────────────┐                    │
-│  │  Bridge (NATS consumer)                         │                    │
-│  │                                                 │                    │
-│  │  Sees cluster READY → reads labels →            │                    │
-│  │  selects catalog item → creates cost instance   │                    │
-│  │  via DCM Catalog API                            │                    │
-│  └─────────────────────┬───────────────────────────┘                    │
-│                        │                                                │
-│                        ▼                                                │
-│  ┌──────────┐    ┌──────────┐    ┌──────────────────────┐               │
-│  │ Catalog  │───►│Placement │───►│ Policy Engine        │               │
-│  │ (cost)   │    │          │    │ • Rate governance    │               │
-│  └──────────┘    └──────────┘    │ • Markup enforcement │               │
-│                                  │ • Provider selection │               │
-│                                  └────┬─────────────────┘               │
-│                                       │                                 │
-│                                       ▼                                 │
-│                                  ┌──────────┐                           │
-│                                  │  SPRM    │                           │
-│                                  └────┬─────┘                           │
-│                                       │                                 │
-│                                       ▼                                 │
-│                                  ┌──────────────────┐                   │
-│                                  │ koku-cost-       │                   │
-│                                  │ provider         │                   │
-│                                  │                  │                   │
-│                                  │ Creates Koku     │                   │
-│                                  │ Sources + Cost   │                   │
-│                                  │ Models           │                   │
-│                                  │                  │                   │
-│                                  │ Serves metering/ │                   │
-│                                  │ cost query API   │                   │
-│                                  └────┬─────────────┘                   │
-│       │                                                                 │
-│       │  Koku REST API                                                  │
-│       ▼                                                                 │
-│  ┌───────────────────────────────────────────────────┐                  │
-│  │               Koku / Cost Management              │                  │
-│  │                                                   │                  │
-│  │  Sources ◄── created by koku-cost-provider        │                  │
-│  │  Cost Models ◄── created by koku-cost-provider    │                  │
-│  │  Reports API ──► queried by koku-cost-provider    │                  │
-│  │  Masu pipeline ◄── fed by koku-metrics-operator   │                  │
-│  └───────────────────────────────────────────────────┘                  │
-│                                                                         │
-│  ┌───────────────────────────────────────────────────┐                  │
-│  │            Provisioned Clusters                   │                  │
-│  │  ┌─────────────┐  ┌─────────────┐                 │                  │
-│  │  │ Cluster A   │  │ Cluster B   │                 │                  │
-│  │  │ metrics-op  │  │ metrics-op  │                 │                  │
-│  │  │ → uploads   │  │ → uploads   │                 │                  │
-│  │  │   to Koku   │  │   to Koku   │                 │                  │
-│  │  └─────────────┘  └─────────────┘                 │                  │
-│  └───────────────────────────────────────────────────┘                  │
-└─────────────────────────────────────────────────────────────────────────┘
-```
+![Architecture Summary](cost-sp-architecture.png)
 
 ### Component Responsibilities
 
@@ -1471,12 +1339,14 @@ goes through DCM's standard provisioning pipeline. This means cost instances
 get the same governance (catalog validation, policy evaluation, audit trail)
 as any other DCM resource.
 
-```
-Before (Integration Architecture):
-  Bridge ──► Koku API (direct)
-
-After (This Document):
-  Bridge ──► DCM Catalog ──► Placement ──► Policy ──► SPRM ──► Cost SP ──► Koku API
+```mermaid
+flowchart LR
+    subgraph Before["Before (Integration Architecture)"]
+        B1[Bridge] --> B2[Koku API]
+    end
+    subgraph After["After (This Document)"]
+        A1[Bridge] --> A2[DCM Catalog] --> A3[Placement] --> A4[Policy] --> A5[SPRM] --> A6[Cost SP] --> A7[Koku API]
+    end
 ```
 
 ---

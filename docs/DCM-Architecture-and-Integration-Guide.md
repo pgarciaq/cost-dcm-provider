@@ -57,48 +57,7 @@ microservices that implement a standard HTTP contract.
 
 ### System Topology
 
-```
-                    ┌──────────────────────────────────────────────┐
-                    │              DCM Control Plane               │
-                    │                                              │
-  User / CLI ──►  API Gateway (Traefik :9080)                     │
-                    │   │                                          │
-                    │   ├──► Catalog Manager ──────────────────┐   │
-                    │   │      (service types, catalog items,  │   │
-                    │   │       instances, validation)         │   │
-                    │   │                                      ▼   │
-                    │   ├──► Placement Manager ──► Policy Manager  │
-                    │   │      (resource orchestration,   (OPA/Rego│
-                    │   │       intent storage)        evaluation) │
-                    │   │            │                              │
-                    │   │            ▼                              │
-                    │   └──► Service Provider Manager (SPM)        │
-                    │          ├── Provider Registry               │
-                    │          ├── Resource Manager (SPRM)         │
-                    │          ├── Health Checker                  │
-                    │          └── NATS JetStream Consumer         │
-                    │                    │                          │
-                    │    PostgreSQL ◄────┘    NATS JetStream       │
-                    └────────────────────────────┬─────────────────┘
-                                                 │
-                    ┌────────────────────────────┬┼──────────────────┐
-                    │        Service Providers   ││                  │
-                    │                            ││                  │
-                    │  ┌─── KubeVirt SP ◄────────┘│                  │
-                    │  │    (VMs)                  │                  │
-                    │  │                           │                  │
-                    │  ├─── K8s Container SP ◄─────┤                  │
-                    │  │    (Deployments)           │                  │
-                    │  │                           │                  │
-                    │  ├─── ACM Cluster SP ◄───────┤                  │
-                    │  │    (HyperShift clusters)  │                  │
-                    │  │                           │                  │
-                    │  └─── Your SP ◄──────────────┘                  │
-                    │       (anything)        ▲                      │
-                    │                         │ CloudEvents on NATS  │
-                    │       SP ──────────────►│ (async status)       │
-                    └─────────────────────────┴─────────────────────┘
-```
+![DCM Control Plane Topology](dcm-topology.png)
 
 ### Technology Stack
 
@@ -369,37 +328,15 @@ database.
 
 ## 7. Request Lifecycle: End-to-End Flow
 
-```
- User/CLI
-   │
-   ▼
- API Gateway (Traefik :9080)
-   │
-   ▼
- Catalog Manager
-   ├── Validates user_values against CatalogItem's validation_schema
-   ├── Merges defaults + user_values into a full ServiceType spec
-   ├── Creates CatalogItemInstance record
-   └── Delegates to ─────────────────────────────────────────────┐
-                                                                  ▼
-                                                        Placement Manager
-                                                          ├── Stores original intent (for rehydration)
-                                                          ├── Calls ──► Policy Manager (:8081)
-                                                          │               Evaluates Rego policies
-                                                          │               Returns: APPROVED|MODIFIED
-                                                          │                        + selected_provider
-                                                          │                        + mutated spec
-                                                          └── Calls ──► SPRM (in SPM)
-                                                                          ├── Looks up provider by name
-                                                                          ├── POST spec to SP endpoint
-                                                                          └── Stores instance record
-                                                                                    │
-                                                                                    ▼
-                                                                          Service Provider
-                                                                            ├── Creates infra resources
-                                                                            └── Publishes CloudEvents
-                                                                                to NATS ──► SPM consumer
-                                                                                            updates DB
+```mermaid
+flowchart TB
+    user["User / CLI"] --> gw["API Gateway (Traefik :9080)"]
+    gw --> catalog["Catalog Manager"]
+    catalog --> |"Validates user_values against schema\nMerges defaults + user_values\nCreates CatalogItemInstance"| placement["Placement Manager"]
+    placement --> |"Stores original intent"| policy["Policy Manager (:8081)\nEvaluates Rego policies\nReturns: APPROVED or MODIFIED\n+ selected_provider + mutated spec"]
+    placement --> sprm["SPRM (in SPM)\nLooks up provider by name\nPOST spec to SP endpoint\nStores instance record"]
+    sprm --> sp["Service Provider\nCreates infra resources"]
+    sp -. "CloudEvents on NATS" .-> spm["SPM Consumer\nupdates DB"]
 ```
 
 ### Where status is visible

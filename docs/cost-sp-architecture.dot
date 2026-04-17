@@ -1,0 +1,89 @@
+digraph CostSPArchitecture {
+    graph [
+        fontname="Helvetica,Arial,sans-serif" fontsize=11
+        bgcolor="white" pad="0.3" nodesep=0.6 ranksep=0.35
+        compound=true newrank=true splines=ortho
+    ];
+    node [
+        fontname="Helvetica,Arial,sans-serif" fontsize=9
+        shape=box style="rounded,filled" penwidth=1.2
+    ];
+    edge [
+        fontname="Helvetica,Arial,sans-serif" fontsize=8
+        color="#555" penwidth=1.2 arrowsize=0.8
+    ];
+
+    // --- DCM Control Plane ---
+    subgraph cluster_dcm {
+        label=<<b>DCM Control Plane</b>>
+        fontsize=10 fontcolor="#151515"
+        style="rounded,filled" color="#CC0000" fillcolor="#FFF0F0" penwidth=1.5
+        margin=10
+
+        { rank=same; tenant; operator_node; }
+        tenant [label="Tenant\n\"Give me a cluster\"" fillcolor="#F0F0F0" color="#888" fontcolor="#151515"]
+        operator_node [label="Operator (one-time)\nconfigures catalog,\npolicies, bridge" fillcolor="#F0F0F0" color="#888" fontcolor="#151515"]
+
+        catalog1 [label="Catalog (cluster)" fillcolor="#EE0000" color="#CC0000" fontcolor="white"]
+        placement1 [label="Placement → Policy → SPRM" fillcolor="#EE0000" color="#CC0000" fontcolor="white"]
+        acm_sp [label="ACM Cluster SP\nCreates cluster, publishes READY" fillcolor="#4169E1" color="#2850A8" fontcolor="white"]
+        nats [label="NATS dcm.status.cluster" fillcolor="#E0E0E0" color="#999" fontcolor="#151515"]
+        bridge [label="Bridge (NATS consumer)\nReads labels → creates cost instance" fillcolor="#7B68EE" color="#5B48CE" fontcolor="white"]
+        catalog2 [label="Catalog (cost)" fillcolor="#EE0000" color="#CC0000" fontcolor="white"]
+        placement2 [label="Placement → Policy\n(rate governance, markup)" fillcolor="#EE0000" color="#CC0000" fontcolor="white"]
+        sprm [label="SPRM" fillcolor="#EE0000" color="#CC0000" fontcolor="white"]
+        cost_sp [label="koku-cost-provider\nCreates Sources + Cost Models\nServes metering / cost query API" fillcolor="#228B22" color="#1A6B1A" fontcolor="white"]
+
+        tenant -> catalog1 [color="#CC0000"]
+        operator_node -> catalog1 [color="#CC0000" style=dashed]
+        catalog1 -> placement1 [color="#CC0000"]
+        placement1 -> acm_sp [color="#CC0000"]
+        acm_sp -> nats [color="#999" style=dashed]
+        nats -> bridge [color="#6644AA"]
+        bridge -> catalog2 [color="#CC0000"]
+        catalog2 -> placement2 [color="#CC0000"]
+        placement2 -> sprm [color="#CC0000"]
+        sprm -> cost_sp [color="#228B22"]
+    }
+
+    // --- Koku ---
+    subgraph cluster_koku {
+        label=<<b>Koku / cost management</b>>
+        fontsize=10 fontcolor="#151515"
+        style="rounded,filled" color="#228B22" fillcolor="#F0FFF0" penwidth=1.5
+        margin=10
+
+        koku_masu [label="Masu Pipeline" fillcolor="#2E8B57" color="#1A6B1A" fontcolor="white"]
+        koku_reports [label="Reports API" fillcolor="#2E8B57" color="#1A6B1A" fontcolor="white"]
+        koku_cm [label="Cost Models" fillcolor="#2E8B57" color="#1A6B1A" fontcolor="white"]
+        koku_src [label="Sources" fillcolor="#2E8B57" color="#1A6B1A" fontcolor="white"]
+
+        koku_masu -> koku_reports -> koku_cm -> koku_src [style=invis]
+    }
+
+    // --- Provisioned Clusters ---
+    subgraph cluster_clusters {
+        label=<<b>Provisioned Clusters</b>>
+        fontsize=10 fontcolor="#151515"
+        style="rounded,filled" color="#B8860B" fillcolor="#FFFFF0" penwidth=1.5
+        margin=10
+
+        ca [label="Cluster A" fillcolor="#DAA520" color="#B8860B" fontcolor="white"]
+        cb [label="Cluster B" fillcolor="#DAA520" color="#B8860B" fontcolor="white"]
+        cn [label="Cluster N" fillcolor="#DAA520" color="#B8860B" fontcolor="white"]
+
+        ca -> cb -> cn [style=invis]
+    }
+
+    // Horizontal alignment: clusters at Masu level, cost_sp at Sources level
+    { rank=same; koku_masu; ca; }
+    { rank=same; cost_sp; koku_src; }
+
+    // Force left-to-right cluster ordering
+    cost_sp -> koku_src [xlabel="Koku REST API" color="#228B22" fontcolor="#228B22" penwidth=2 arrowsize=1.2]
+
+    // Clusters → Koku Masu
+    ca -> koku_masu [xlabel="metrics\nuploads" style=dashed color="#228B22" fontcolor="#228B22" penwidth=2 arrowsize=1.2 constraint=false]
+    cb -> koku_masu [style=dashed color="#228B22" penwidth=2 arrowsize=1.2 constraint=false]
+    cn -> koku_masu [style=dashed color="#228B22" penwidth=2 arrowsize=1.2 constraint=false]
+}

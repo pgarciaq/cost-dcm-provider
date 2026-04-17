@@ -1,0 +1,84 @@
+digraph SystemLandscape {
+    graph [
+        fontname="Helvetica,Arial,sans-serif" fontsize=12
+        bgcolor="white" pad="0.4" nodesep=0.35 ranksep=0.5
+        compound=true newrank=true
+    ];
+    node [
+        fontname="Helvetica,Arial,sans-serif" fontsize=10
+        shape=box style="rounded,filled" penwidth=1.5
+    ];
+    edge [
+        fontname="Helvetica,Arial,sans-serif" fontsize=9
+        color="#555555" penwidth=1.2
+    ];
+
+    subgraph cluster_dc {
+        label=<<b>Data Center</b>>
+        fontsize=13 fontcolor="#151515"
+        style="rounded,filled" color="#666" fillcolor="#FAFAFA" penwidth=2
+
+        subgraph cluster_dcm {
+            label=<<b>DCM Control Plane</b>>
+            fontsize=11 fontcolor="#151515"
+            style="rounded,filled" color="#CC0000" fillcolor="#FFF0F0" penwidth=2
+
+            catalog [label="Catalog" fillcolor="#EE0000" color="#CC0000" fontcolor="white"]
+            placement [label="Placement" fillcolor="#EE0000" color="#CC0000" fontcolor="white"]
+            policy [label="Policy (OPA)" fillcolor="#EE0000" color="#CC0000" fontcolor="white"]
+            spm [label="SPM / SPRM" fillcolor="#EE0000" color="#CC0000" fontcolor="white"]
+            nats_dcm [label="NATS" fillcolor="#E0E0E0" color="#999" fontcolor="#151515"]
+
+            catalog -> placement -> policy -> spm
+            spm -> nats_dcm [style=dashed color="#999"]
+        }
+
+        subgraph cluster_koku {
+            label=<<b>Koku / cost management</b>>
+            fontsize=11 fontcolor="#151515"
+            style="rounded,filled" color="#228B22" fillcolor="#F0FFF0" penwidth=2
+
+            koku_api [label="Koku API" fillcolor="#2E8B57" color="#1A6B1A" fontcolor="white"]
+            koku_ui [label="koku-ui" fillcolor="#2E8B57" color="#1A6B1A" fontcolor="white"]
+            masu [label="Masu + Celery\nWorkers" fillcolor="#2E8B57" color="#1A6B1A" fontcolor="white"]
+            pg_koku [label="PostgreSQL" fillcolor="#E0E0E0" color="#999" fontcolor="#151515"]
+            redis [label="Redis" fillcolor="#E0E0E0" color="#999" fontcolor="#151515"]
+
+            koku_ui -> koku_api
+            koku_api -> masu
+            masu -> pg_koku [style=dashed color="#999"]
+            masu -> redis [style=dashed color="#999"]
+        }
+
+        subgraph cluster_infra {
+            label=<<b>Infrastructure</b>>
+            fontsize=11 fontcolor="#151515"
+            style="rounded,filled" color="#B8860B" fillcolor="#FFFFF0" penwidth=1.5
+
+            acm_sp [label="ACM Cluster SP" fillcolor="#4169E1" color="#2850A8" fontcolor="white"]
+            kv_sp [label="KubeVirt VM SP" fillcolor="#4169E1" color="#2850A8" fontcolor="white"]
+            metrics_op [label="koku-metrics-\noperator" fillcolor="#2E8B57" color="#1A6B1A" fontcolor="white"]
+
+            clusters [label="OpenShift\nClusters" fillcolor="#DAA520" color="#B8860B" fontcolor="white"]
+            vms [label="KubeVirt VMs" fillcolor="#DAA520" color="#B8860B" fontcolor="white"]
+            prom [label="Prometheus\nMetrics" fillcolor="#DAA520" color="#B8860B" fontcolor="white"]
+
+            acm_sp -> clusters
+            kv_sp -> vms
+            metrics_op -> prom
+        }
+
+        spm -> acm_sp [lhead=cluster_infra]
+        spm -> kv_sp
+        metrics_op -> koku_api [label="uploads" style=dashed color="#228B22" fontcolor="#228B22" constraint=false]
+
+        gap [
+            label=<<b>THE GAP</b>: No connection between DCM provisioning events and Koku's cost pipeline. No shared identity for clusters.>
+            shape=box style="filled,dashed" fillcolor="#FFE0E0" color="#CC0000"
+            fontcolor="#CC0000" fontsize=11 penwidth=2
+        ]
+        clusters -> gap [style=invis]
+        vms -> gap [style=invis]
+        prom -> gap [style=invis]
+    }
+}

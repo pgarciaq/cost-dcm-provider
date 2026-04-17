@@ -1,0 +1,75 @@
+digraph DCMTopology {
+    graph [
+        fontname="Helvetica,Arial,sans-serif" fontsize=11
+        bgcolor="white" pad="0.3" nodesep=1.2 ranksep=0.35
+        compound=true newrank=true splines=ortho
+    ];
+    node [
+        fontname="Helvetica,Arial,sans-serif" fontsize=9
+        shape=box style="rounded,filled" penwidth=1.2
+    ];
+    edge [
+        fontname="Helvetica,Arial,sans-serif" fontsize=8
+        color="#555" penwidth=1.2 arrowsize=0.8
+    ];
+
+    user [label="User / CLI" fillcolor="#F0F0F0" color="#888" fontcolor="#151515"]
+
+    // --- DCM Control Plane ---
+    subgraph cluster_dcm {
+        label=<<b>DCM Control Plane</b>>
+        fontsize=10 fontcolor="#151515"
+        style="rounded,filled" color="#CC0000" fillcolor="#FFF0F0" penwidth=1.5
+        margin=10
+
+        gateway [label="API Gateway (Traefik :9080)" fillcolor="#EE0000" color="#CC0000" fontcolor="white"]
+
+        { rank=same; catalog; placement; }
+        catalog [label="Catalog Manager" fillcolor="#EE0000" color="#CC0000" fontcolor="white"]
+        placement [label="Placement Manager" fillcolor="#EE0000" color="#CC0000" fontcolor="white"]
+
+        { rank=same; policy; spm; }
+        policy [label="Policy Manager\n(OPA / Rego)" fillcolor="#EE0000" color="#CC0000" fontcolor="white"]
+        spm [label="Service Provider\nManager (SPM)" fillcolor="#EE0000" color="#CC0000" fontcolor="white"]
+
+        { rank=same; pg; nats; }
+        pg [label="PostgreSQL" fillcolor="#E0E0E0" color="#999" fontcolor="#151515"]
+        nats [label="NATS\nJetStream" fillcolor="#E0E0E0" color="#999" fontcolor="#151515" height=1.2]
+
+        gateway -> catalog [color="#CC0000"]
+        gateway -> placement [color="#CC0000"]
+        placement -> policy [color="#CC0000"]
+        placement -> spm [color="#CC0000"]
+        spm -> pg [style=dashed color="#999"]
+        spm -> nats [style=dashed color="#999"]
+    }
+
+    // --- Service Providers (compact HTML table) ---
+    sp_box [
+        shape=plain
+        label=<<table border="2" cellborder="0" cellspacing="5" cellpadding="5" color="#4444CC" bgcolor="#F0F0FF" style="rounded">
+            <tr><td colspan="3"><b>Service Providers</b></td></tr>
+            <tr>
+                <td port="upper" width="1" bgcolor="#F0F0FF"></td>
+                <td bgcolor="#4169E1"><font color="white">K8s Container SP<br/>(Deployments)</font></td>
+                <td bgcolor="#4169E1"><font color="white">KubeVirt VM SP<br/>(VMs)</font></td>
+            </tr>
+            <tr>
+                <td port="lower" width="1" bgcolor="#F0F0FF"></td>
+                <td bgcolor="#4169E1"><font color="white">ACM Cluster SP<br/>(HyperShift)</font></td>
+                <td bgcolor="#7B9BD5"><font color="white"><i>Your SP<br/>(anything)</i></font></td>
+            </tr>
+        </table>>
+    ]
+
+    user -> gateway
+
+    // Bottom-align SP box with DCM bottom row
+    { rank=same; pg; nats; sp_box; }
+
+    // NATS dispatches to all SPs via HTTP + NATS (upper line)
+    nats:ne -> sp_box:upper:w [xlabel="HTTP + NATS" color="#555" penwidth=2 arrowsize=1.2]
+
+    // All SPs publish CloudEvents back to NATS (lower line)
+    sp_box:lower:w -> nats:se [xlabel="CloudEvents" style=dashed color="#228B22" fontcolor="#228B22" penwidth=2 arrowsize=1.2 constraint=false]
+}

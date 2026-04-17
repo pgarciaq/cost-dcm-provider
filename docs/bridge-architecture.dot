@@ -1,0 +1,81 @@
+digraph BridgeArchitecture {
+    graph [
+        fontname="Helvetica,Arial,sans-serif" fontsize=11
+        bgcolor="white" pad="0.3" nodesep=0.5 ranksep=0.5
+    ];
+    node [
+        fontname="Helvetica,Arial,sans-serif" fontsize=9
+        shape=box style="rounded,filled" penwidth=1.2
+    ];
+    edge [
+        fontname="Helvetica,Arial,sans-serif" fontsize=8
+        color="#555" penwidth=1
+    ];
+
+    // --- Tier 1: DCM Control Plane ---
+    subgraph cluster_dcm {
+        label=<<b>DCM Control Plane</b>>
+        fontsize=10 fontcolor="#151515"
+        style="rounded,filled" color="#CC0000" fillcolor="#FFF0F0" penwidth=1.5
+        margin=12
+
+        dcm [label="Catalog → Placement → Policy → SPRM" fillcolor="#EE0000" color="#CC0000" fontcolor="white"]
+        acm [label="ACM Cluster SP" fillcolor="#4169E1" color="#2850A8" fontcolor="white"]
+        nats [label="NATS JetStream" fillcolor="#E0E0E0" color="#999" fontcolor="#151515"]
+        dcm -> acm -> nats [style=dashed]
+    }
+
+    // --- Tier 2: Three boxes side by side ---
+    { rank=same; bridge_box; koku_box; clusters_box; }
+
+    bridge_box [
+        shape=plain
+        label=<<table border="2" cellborder="0" cellspacing="6" cellpadding="6" color="#6644AA" bgcolor="#F0E8FF" style="rounded">
+            <tr><td colspan="1"><b>DCM-Koku Bridge</b></td></tr>
+            <tr><td port="consumer" bgcolor="#7B68EE"><font color="white">NATS Consumer</font></td></tr>
+            <tr><td port="lifecycle" bgcolor="#7B68EE"><font color="white">Lifecycle Sync<br/>READY → create<br/>DELETED → deactivate</font></td></tr>
+            <tr><td port="idmap" bgcolor="#7B68EE"><font color="white">ID Mapping Store</font></td></tr>
+            <tr><td port="proxy" bgcolor="#7B68EE"><font color="white">Cost Query Proxy</font></td></tr>
+        </table>>
+    ]
+
+    koku_box [
+        shape=plain
+        label=<<table border="2" cellborder="0" cellspacing="6" cellpadding="6" color="#228B22" bgcolor="#F0FFF0" style="rounded">
+            <tr><td colspan="1"><b>Koku / cost management</b></td></tr>
+            <tr><td port="sources" bgcolor="#2E8B57"><font color="white">Sources</font></td></tr>
+            <tr><td port="costmod" bgcolor="#2E8B57"><font color="white">Cost Models</font></td></tr>
+            <tr><td port="masu" bgcolor="#2E8B57"><font color="white">Masu Pipeline</font></td></tr>
+            <tr><td port="reports" bgcolor="#2E8B57"><font color="white">Report API</font></td></tr>
+        </table>>
+    ]
+
+    clusters_box [
+        shape=plain
+        label=<<table border="2" cellborder="0" cellspacing="6" cellpadding="6" color="#B8860B" bgcolor="#FFFFF0" style="rounded">
+            <tr><td colspan="1"><b>Provisioned Clusters</b></td></tr>
+            <tr><td port="c1" bgcolor="#DAA520"><font color="white">Cluster A</font></td></tr>
+            <tr><td port="c2" bgcolor="#DAA520"><font color="white">Cluster B</font></td></tr>
+            <tr><td port="c3" bgcolor="#DAA520"><font color="white">Cluster C</font></td></tr>
+        </table>>
+    ]
+
+    // Force left-to-right order
+    bridge_box -> koku_box [style=invis]
+    koku_box -> clusters_box [style=invis]
+
+    // --- Edges ---
+
+    // DCM → Bridge (left side)
+    nats:sw -> bridge_box:consumer:w
+
+    // Bridge → Koku
+    bridge_box:lifecycle -> koku_box:sources [label="creates" color="#228B22" fontcolor="#228B22"]
+    bridge_box:lifecycle -> koku_box:costmod [label="assigns" color="#228B22" fontcolor="#228B22"]
+    bridge_box:proxy -> koku_box:reports [label="queries" color="#228B22" fontcolor="#228B22"]
+
+    // Clusters → Koku
+    clusters_box:c1 -> koku_box:masu [label="metrics\nuploads" style=dashed color="#228B22" fontcolor="#228B22"]
+    clusters_box:c2 -> koku_box:masu [style=dashed color="#228B22"]
+    clusters_box:c3 -> koku_box:masu [style=dashed color="#228B22"]
+}
