@@ -243,7 +243,7 @@ To calculate costs for an OpenShift cluster, Koku requires:
 6. **Different messaging systems** — DCM uses NATS, Koku uses Kafka + Celery;
    no shared bus
 
-### What is NOT a gap:
+### What is NOT a gap (if the operator is already running):
 
 - **Multi-cluster cost tracking** — Koku already handles many clusters in a
   single instance; each cluster is a separate Source.
@@ -258,6 +258,45 @@ To calculate costs for an OpenShift cluster, Koku requires:
 - **Cost distribution** — Platform, worker, storage, network, and GPU overhead
   distribution is built into Koku's cost model system and works across all
   workloads on a cluster regardless of how they were provisioned.
+
+### Critical constraint: all-or-nothing data collection
+
+The koku-metrics-operator is a **cluster-scoped, all-or-nothing** collector.
+It queries Prometheus for every node, pod, PVC, namespace, and VM on the
+cluster every hour and uploads the **entire cluster's** usage data. There is
+no mode to collect data for a single VM or namespace in isolation.
+
+**Implications:**
+
+1. **The operator must be running before DCM provisions VMs or containers on
+   a cluster.** If DCM provisions a VM on a cluster that does not yet have the
+   operator, there is no cost data for that VM (or anything else on that
+   cluster). The bridge's "light" ID-mapping-only path for VMs and containers
+   only works if the hosting cluster is already a monitored Koku Source.
+
+2. **Cost data granularity comes from filtering, not targeted collection.**
+   To answer "how much does DCM VM X cost?", the bridge queries Koku's full
+   cluster dataset (e.g., `reporting_ocp_vm_summary_p`) and filters by
+   `vm_name` + `cluster_id`. You cannot avoid ingesting the full cluster's
+   data just because you only care about one resource.
+
+3. **Pipeline cost scales with cluster size, not DCM resource count.** A
+   single DCM-provisioned VM on a 500-namespace cluster means Koku processes
+   all 500 namespaces' data every hour. The cost of running the Koku pipeline
+   is driven by total cluster size, not by how many resources DCM provisioned.
+
+4. **Sequencing matters for new clusters.** After DCM provisions a new cluster:
+   cluster READY → operator deployed (~minutes) → first Prometheus scrape
+   (~minutes) → first upload to Koku (~up to 1 hour) → Koku processes data
+   (~minutes). **First cost data is available ~1-2 hours after READY.** Any
+   VM or container provisioned in that window exists but has no cost visibility
+   until the first upload completes.
+
+5. **Pre-existing clusters need explicit onboarding.** If DCM provisions VMs on
+   clusters that were NOT provisioned by DCM (pre-existing infrastructure), the
+   bridge must detect this and ensure those clusters are also Koku Sources with
+   the operator running. Otherwise the "light" VM/container path silently
+   produces no cost data.
 
 ---
 
@@ -457,13 +496,22 @@ metrics operator already captures VMs and containers on monitored clusters:
 | Subject | Event Type | Bridge Action | Why |
 |---------|-----------|---------------|-----|
 | `dcm.cluster` | `dcm.status.cluster` | **Heavy:** Create Koku Source, deploy operator, assign cost model | New cluster = new data source with no operator |
-| `dcm.vm` | `dcm.status.vm` | **Light:** Store ID mapping only | Operator on the host cluster already captures the VM's pod metrics |
-| `dcm.container` | `dcm.status.container` | **Light:** Store ID mapping only | Operator on the host cluster already captures the deployment's pod metrics |
+| `dcm.vm` | `dcm.status.vm` | **Light if cluster monitored:** Store ID mapping. **Heavy if not:** Onboard cluster first. | Operator captures all VMs, but only if it's running |
+| `dcm.container` | `dcm.status.container` | **Light if cluster monitored:** Store ID mapping. **Heavy if not:** Onboard cluster first. | Operator captures all pods, but only if it's running |
 
-For VMs and containers, the bridge's job is purely **correlation**: mapping the
-DCM instance ID to the cluster + namespace + pod/VM name so cost queries can
-filter Koku's existing data. No new Koku source creation or operator deployment
-is needed — that cluster is already monitored.
+For VMs and containers, the bridge's job is **correlation** when the hosting
+cluster is already a Koku Source with the operator running. But the bridge
+**must verify** that the target cluster is monitored. If it is not (e.g., a
+pre-existing cluster that DCM didn't provision, or a DCM cluster where the
+operator hasn't finished deploying), the bridge must **onboard that cluster
+first** — the same heavy path as a new cluster (create Source, deploy
+operator, assign cost model). Cost data for that VM or container will only
+appear after the operator's first upload (~1-2 hours).
+
+The koku-metrics-operator is all-or-nothing: it collects the entire cluster's
+data every hour. There is no way to request data for a single VM or namespace.
+Cost queries for individual DCM resources work by **filtering** from the full
+cluster dataset, not by targeted collection.
 
 ### CloudEvent to Koku Action Translation
 
@@ -747,18 +795,37 @@ CostModel.
 
 2. **Operator bootstrap delay:** After a cluster is READY, the metrics operator
    must be deployed, must collect at least one hour of data, and must upload it
-   before Koku has anything to price. First cost data is ~2 hours after READY.
+   before Koku has anything to price. First cost data is ~1-2 hours after READY.
+   Any VM or container provisioned in that window has no cost visibility.
 
-3. **DCM has no SP-to-SP communication:** The cost SP cannot natively react to
+3. **Unmonitored cluster detection:** When DCM provisions a VM or container,
+   the bridge must determine whether the target cluster already has the metrics
+   operator. If not, it must trigger the full onboarding path (Source creation,
+   operator deployment) before cost data can flow. This requires the bridge to
+   maintain a registry of which clusters are Koku Sources, or query Koku's
+   Sources API on every VM/container event.
+
+4. **All-or-nothing collection cost:** The metrics operator collects the
+   **entire cluster's** usage data every hour. On large shared clusters, Koku
+   processes far more data than what relates to DCM-provisioned resources.
+   Pipeline cost scales with cluster size, not DCM resource count. This is not
+   a problem to solve, but a capacity planning consideration.
+
+5. **DCM has no SP-to-SP communication:** The cost SP cannot natively react to
    events from the cluster SP. The NATS subscription is a custom extension of
    the current architecture.
 
-4. **Koku API authentication:** On-prem Koku uses identity headers. The bridge
+6. **Koku API authentication:** On-prem Koku uses identity headers. The bridge
    needs a service account or development identity to call Koku's API.
 
-5. **Multi-tenancy:** DCM doesn't have tenancy yet (v1). Koku uses
+7. **Multi-tenancy:** DCM doesn't have tenancy yet (v1). Koku uses
    schema-per-tenant. The bridge must know which Koku tenant to create sources
    in.
+
+8. **Pre-existing infrastructure:** If DCM service providers target clusters
+   that were not provisioned by DCM (existing infrastructure), the bridge must
+   discover and onboard those clusters to Koku. This may conflict with
+   clusters that are already Koku Sources managed outside of DCM.
 
 ---
 
