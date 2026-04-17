@@ -2,7 +2,7 @@
 
 ## Bridging Koku/Cost Management with DCM Service Providers
 
-**Version:** 1.0
+**Version:** 1.1
 **Date:** 2026-04-17
 **Prerequisites:** [DCM Architecture and Integration Guide](./DCM-Architecture-and-Integration-Guide.md)
 
@@ -41,6 +41,21 @@ manage cost models separately.
 
 The integration must work in **on-premises** deployments where both DCM and Koku
 run in the same data center, using PostgreSQL-only paths (no Trino).
+
+### Key Assumption: One Koku, Many Clusters
+
+A single Koku instance inherently serves **multiple OpenShift clusters**. Each
+cluster is a separate `Provider/Source` record, with its own
+koku-metrics-operator uploading hourly data. Koku already aggregates costs
+across clusters, namespaces, pods, PVCs, and OpenShift Virtualization VMs
+within each cluster.
+
+This means the integration bridge is **not** a per-cluster component. It is a
+**singleton** that manages the mapping between DCM's provisioned resources and
+Koku's multi-cluster cost data. For VMs and containers provisioned on clusters
+that already have the metrics operator, Koku is **already tracking their costs**
+— the bridge only needs to provide ID correlation, not trigger new data
+collection.
 
 ---
 
@@ -227,6 +242,22 @@ To calculate costs for an OpenShift cluster, Koku requires:
    know to stop expecting data or to mark the source inactive
 6. **Different messaging systems** — DCM uses NATS, Koku uses Kafka + Celery;
    no shared bus
+
+### What is NOT a gap:
+
+- **Multi-cluster cost tracking** — Koku already handles many clusters in a
+  single instance; each cluster is a separate Source.
+- **VM cost tracking within a cluster** — Once the metrics operator runs on a
+  cluster, it captures ALL pods including KubeVirt VMs (via
+  `vm_kubevirt_io_name` labels). If DCM's KubeVirt SP provisions a VM on a
+  cluster that already has the operator, **Koku is already pricing that VM**.
+- **Container cost tracking within a cluster** — Same principle. Deployments
+  created by DCM's K8s Container SP are captured automatically by the operator.
+- **Namespace-level cost attribution** — Koku already breaks down costs by
+  namespace, node, and project. No new pipeline work is needed.
+- **Cost distribution** — Platform, worker, storage, network, and GPU overhead
+  distribution is built into Koku's cost model system and works across all
+  workloads on a cluster regardless of how they were provisioned.
 
 ---
 
@@ -419,13 +450,20 @@ synchronization with a **cost service provider** for DCM-native cost queries.
 
 ### NATS Consumer (DCM Side)
 
-The bridge subscribes to NATS JetStream subjects that DCM SPs publish to:
+The bridge subscribes to NATS JetStream subjects that DCM SPs publish to.
+**Crucially, the required bridge action differs by resource type** because Koku's
+metrics operator already captures VMs and containers on monitored clusters:
 
-| Subject | Event Type | Bridge Action |
-|---------|-----------|---------------|
-| `dcm.cluster` | `dcm.status.cluster` | Cluster lifecycle events → trigger Koku source management |
-| `dcm.container` | `dcm.status.container` | Container lifecycle → future container cost tracking |
-| `dcm.vm` | `dcm.status.vm` | VM lifecycle → future VM cost tracking |
+| Subject | Event Type | Bridge Action | Why |
+|---------|-----------|---------------|-----|
+| `dcm.cluster` | `dcm.status.cluster` | **Heavy:** Create Koku Source, deploy operator, assign cost model | New cluster = new data source with no operator |
+| `dcm.vm` | `dcm.status.vm` | **Light:** Store ID mapping only | Operator on the host cluster already captures the VM's pod metrics |
+| `dcm.container` | `dcm.status.container` | **Light:** Store ID mapping only | Operator on the host cluster already captures the deployment's pod metrics |
+
+For VMs and containers, the bridge's job is purely **correlation**: mapping the
+DCM instance ID to the cluster + namespace + pod/VM name so cost queries can
+filter Koku's existing data. No new Koku source creation or operator deployment
+is needed — that cluster is already monitored.
 
 ### CloudEvent to Koku Action Translation
 
@@ -775,9 +813,18 @@ CostModel.
 
 **Goal:** Extend beyond clusters to VMs and containers.
 
-- Subscribe to `dcm.vm` and `dcm.container` subjects
-- Map VM lifecycle to Koku's OCP virtualization cost models
-- Container cost tracking (namespace-level)
+Because Koku's metrics operator already captures all pods (including KubeVirt
+VMs) and all namespaces on monitored clusters, VM and container cost data is
+**already flowing** for resources provisioned on those clusters. The bridge
+only needs to add **ID correlation**, not new data pipelines.
+
+- Subscribe to `dcm.vm` and `dcm.container` NATS subjects
+- On VM/container events: store mapping of `dcm_instance_id` → cluster +
+  namespace + resource name (deployment name, VM pod label)
+- Extend cost query proxy to filter Koku data by these identifiers
+  (e.g., `GET /cost-reports/{dcm-vm-instance-id}` → query Koku's
+  `reporting_ocp_vm_summary_p` filtered by `vm_name` + `cluster_id`)
 - Unified cost dashboard across all DCM-provisioned resources
 
-**Deliverable:** Full multi-resource cost coverage.
+**Deliverable:** Full multi-resource cost correlation (lightweight — no new
+data pipeline work).
