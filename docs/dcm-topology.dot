@@ -68,8 +68,8 @@ digraph DCMTopology {
     { rank=same; pg; nats; sp_box; }
 
     // NATS dispatches to all SPs via HTTP + NATS (upper line)
-    nats:ne -> sp_box:upper:w [xlabel="HTTP + NATS" color="#555" penwidth=2 arrowsize=1.2]
+    nats:ne -> sp_box [xlabel="HTTP + NATS" color="#555" penwidth=2 arrowsize=1.2]
 
     // All SPs publish CloudEvents back to NATS (lower line)
-    sp_box:lower:w -> nats:se [xlabel="CloudEvents" style=dashed color="#228B22" fontcolor="#228B22" penwidth=2 arrowsize=1.2 constraint=false]
+    sp_box -> nats:se [xlabel="CloudEvents" style=dashed color="#228B22" fontcolor="#228B22" penwidth=2 arrowsize=1.2 constraint=false]
 }

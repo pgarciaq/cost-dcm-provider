@@ -131,17 +131,17 @@
 </g>
 <!-- nats&#45;&gt;sp_box -->
 <g id="edge8" class="edge">
-<title>nats:ne&#45;&gt;sp_box:w</title>
-<path fill="none" stroke="#555555" stroke-width="2" d="M282.62,-76C282.62,-76 360.97,-76 360.97,-76"/>
-<polygon fill="#555555" stroke="#555555" stroke-width="2" points="360.97,-80.2 372.97,-76 360.97,-71.8 360.97,-80.2"/>
-<text xml:space="preserve" text-anchor="middle" x="334.36" y="-68.4" font-family="Helvetica,Arial,sans-serif" font-size="8.00">HTTP + NATS</text>
+<title>nats:ne&#45;&gt;sp_box</title>
+<path fill="none" stroke="#555555" stroke-width="2" d="M282.62,-76C282.62,-76 353.98,-76 353.98,-76"/>
+<polygon fill="#555555" stroke="#555555" stroke-width="2" points="353.98,-80.2 365.98,-76 353.98,-71.8 353.98,-80.2"/>
+<text xml:space="preserve" text-anchor="middle" x="343.43" y="-76.65" font-family="Helvetica,Arial,sans-serif" font-size="8.00">HTTP + NATS</text>
 </g>
 <!-- sp_box&#45;&gt;nats -->
 <g id="edge9" class="edge">
-<title>sp_box:w&#45;&gt;nats:se</title>
-<path fill="none" stroke="#228b22" stroke-width="2" stroke-dasharray="5,2" d="M376,-47C376,-47 297.65,-47 297.65,-47"/>
+<title>sp_box&#45;&gt;nats:se</title>
+<path fill="none" stroke="#228b22" stroke-width="2" stroke-dasharray="5,2" d="M369.01,-47C369.01,-47 297.65,-47 297.65,-47"/>
 <polygon fill="#228b22" stroke="#228b22" stroke-width="2" points="297.65,-42.8 285.65,-47 297.65,-51.2 297.65,-42.8"/>
-<text xml:space="preserve" text-anchor="middle" x="314.33" y="-47.65" font-family="Helvetica,Arial,sans-serif" font-size="8.00" fill="#228b22">CloudEvents</text>
+<text xml:space="preserve" text-anchor="middle" x="310.83" y="-47.65" font-family="Helvetica,Arial,sans-serif" font-size="8.00" fill="#228b22">CloudEvents</text>
 </g>
 </g>
 </svg>
