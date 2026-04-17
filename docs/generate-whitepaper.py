@@ -145,16 +145,56 @@ parts.append(empty())
 parts.append(body_text("A Red Hat White Paper"))
 parts.append(body_text("2026"))
 
-# Contents heading + TOC field
+# Contents heading + manual TOC entries
 parts.append(page_break())
 parts.append(heading1("Contents"))
-# TOC field
-pid = next_id()
-parts.append(f'''<w:p w14:paraId="{pid}"><w:r>
-<w:fldChar w:fldCharType="begin"/>
-<w:instrText xml:space="preserve"> TOC \\o "1-3" \\h \\z \\u </w:instrText>
-<w:fldChar w:fldCharType="separate"/>
-<w:fldChar w:fldCharType="end"/></w:r></w:p>''')
+
+toc_entries = [
+    (1, "Executive Summary"),
+    (1, "1. The Sovereignty Imperative \u2014 and Its Blind Spot"),
+    (1, "2. Why Existing FinOps Tools Fail in Sovereign Environments"),
+    (2, "2.1 Data Exfiltration by Design"),
+    (2, "2.2 Insufficient Depth for Commercial Operations"),
+    (2, "2.3 No Path from Metering to Billing"),
+    (1, "3. The Business Case: Why a CIO Should Care"),
+    (2, "3.1 Revenue Enablement"),
+    (2, "3.2 Operational Visibility"),
+    (2, "3.3 Compliance and Auditability"),
+    (2, "3.4 Competitive Differentiation"),
+    (1, "4. The On-Premise Advantage: Keeping Financial Data Sovereign"),
+    (2, "What It Measures"),
+    (2, "Why It Leads the Market for On-Premise OpenShift"),
+    (1, "5. From Metering to Monetization: The DCM Approach"),
+    (2, "5.1 What Is DCM?"),
+    (2, "5.2 Closing the Loop: Cost as a First-Class Service"),
+    (2, "5.3 Three Operating Models"),
+    (1, "6. Real-World Applications"),
+    (2, "Sovereign Cloud Providers"),
+    (2, "Regulated Financial Services"),
+    (2, "Defense and Government"),
+    (2, "Internal IT-as-a-Service"),
+    (1, "7. Architecture at a Glance"),
+    (1, "8. Getting Started"),
+    (1, "9. Conclusion"),
+    (1, "References"),
+]
+
+def toc_entry(level, title):
+    indent = 0 if level == 1 else 360
+    sz = "22" if level == 1 else "20"
+    bold = level == 1
+    pid = next_id()
+    rpr = '<w:rPr>'
+    if bold:
+        rpr += '<w:b w:val="1"/><w:bCs w:val="1"/>'
+    rpr += f'<w:sz w:val="{sz}"/><w:szCs w:val="{sz}"/>'
+    rpr += '</w:rPr>'
+    t = escape(title)
+    indent_xml = f'<w:ind w:left="{indent}"/>' if indent else ""
+    return f'''<w:p w14:paraId="{pid}"><w:pPr><w:spacing w:after="60" w:line="276" w:lineRule="auto"/>{indent_xml}<w:rPr><w:sz w:val="{sz}"/><w:szCs w:val="{sz}"/></w:rPr></w:pPr><w:r>{rpr}<w:t>{t}</w:t></w:r></w:p>'''
+
+for lvl, title in toc_entries:
+    parts.append(toc_entry(lvl, title))
 
 # === EXECUTIVE SUMMARY ===
 parts.append(page_break())
@@ -404,6 +444,15 @@ footer1 = footer1.replace(
 footer1 = footer1.replace('<w:highlight w:val="yellow"/>\n        ', '')
 footer1 = footer1.replace('<w:highlight w:val="yellow"/>', '')
 footer1_path.write_text(footer1)
+
+# Add updateFields to settings.xml so TOC gets populated on open/convert
+settings_path = WORK / "word" / "settings.xml"
+settings = settings_path.read_text()
+settings = settings.replace(
+    '<w:defaultTabStop',
+    '<w:updateFields w:val="true"/>\n  <w:defaultTabStop'
+)
+settings_path.write_text(settings)
 
 # Update copyright year in footer2
 footer2_path = WORK / "word" / "footer2.xml"
