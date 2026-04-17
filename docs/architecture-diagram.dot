@@ -1,0 +1,133 @@
+digraph SovereignCloud {
+    graph [
+        fontname="Helvetica,Arial,sans-serif"
+        fontsize=12
+        bgcolor="white"
+        pad="0.4"
+        nodesep=0.4
+        ranksep=0.6
+        newrank=true
+        compound=true
+    ];
+    node [
+        fontname="Helvetica,Arial,sans-serif"
+        fontsize=11
+        shape=box
+        style="rounded,filled"
+        penwidth=1.5
+    ];
+    edge [
+        fontname="Helvetica,Arial,sans-serif"
+        fontsize=10
+        color="#555555"
+        penwidth=1.2
+    ];
+
+    subgraph cluster_sovereign {
+        label=<<b>SOVEREIGN PERIMETER</b><br/><font point-size="10"><i>All components run on-premise — no data leaves</i></font>>
+        fontsize=14
+        fontcolor="#CC0000"
+        style="rounded,dashed"
+        color="#CC0000"
+        penwidth=2.5
+        bgcolor="#FAFAFA"
+
+        // Row 0: Users
+        { rank=same; operator; tenants; }
+        operator [label="Platform Operator" fillcolor="#F0F0F0" color="#888888" fontcolor="#151515"]
+        tenants [label="Tenants (self-service)" fillcolor="#F0F0F0" color="#888888" fontcolor="#151515"]
+
+        // Row 1: DCM (HTML table for wide horizontal block)
+        dcm [
+            label=<<table border="0" cellspacing="8" cellpadding="8">
+                <tr><td colspan="3"><b>DCM Control Plane</b></td></tr>
+                <tr>
+                    <td bgcolor="#EE0000"><font color="white"><b>Service Catalog</b></font></td>
+                    <td bgcolor="#EE0000"><font color="white"><b>Policy Engine</b></font></td>
+                    <td bgcolor="#EE0000"><font color="white"><b>SP Manager</b></font></td>
+                </tr>
+            </table>>
+            shape=plain
+        ]
+
+        // Left column: Service Providers (boxed, centered)
+        subgraph cluster_sps {
+            label=<<b>Service Providers</b>>
+            labeljust=c
+            fontsize=11
+            fontcolor="#151515"
+            style="rounded,filled"
+            color="#4444CC"
+            fillcolor="#F0F0FF"
+            penwidth=1.5
+
+            cluster_sp [label="Cluster SP\n(e.g. ACM)" fillcolor="#4169E1" color="#2850A8" fontcolor="white" fixedsize=true width=1.6 height=0.55]
+            vm_sp [label="VM SP\n(e.g. OCP-V)" fillcolor="#4169E1" color="#2850A8" fontcolor="white" fixedsize=true width=1.6 height=0.55]
+            sp_more [label="More SPs..." shape=box style="rounded,filled,dashed" fillcolor="#E0E0FF" color="#8888CC" fontcolor="#4444CC" fontsize=10 fixedsize=true width=1.6 height=0.4]
+
+            cluster_sp -> vm_sp [style=invis]
+            vm_sp -> sp_more [style=invis]
+        }
+
+        // Center column: OpenShift Cluster Fleet (boxed, centered)
+        subgraph cluster_fleet {
+            label=<<b>OpenShift Cluster Fleet</b>>
+            labeljust=c
+            fontsize=11
+            fontcolor="#151515"
+            style="rounded,filled"
+            color="#B8860B"
+            fillcolor="#FFFFF0"
+            penwidth=1.5
+
+            c1 [label="Cluster A" fillcolor="#DAA520" color="#B8860B" fontcolor="white" fixedsize=true width=1.6 height=0.45]
+            c2 [label="Cluster B" fillcolor="#DAA520" color="#B8860B" fontcolor="white" fixedsize=true width=1.6 height=0.45]
+            cn [label="Cluster N" fillcolor="#DAA520" color="#B8860B" fontcolor="white" fixedsize=true width=1.6 height=0.45]
+
+            c1 -> c2 -> cn [style=invis]
+        }
+
+        // Right column: Cost Management (boxed, centered)
+        subgraph cluster_costmgmt {
+            label=<<b>Red Hat Lightspeed<br/>cost management</b>>
+            labeljust=c
+            fontsize=12
+            fontcolor="#151515"
+            style="rounded,filled"
+            color="#228B22"
+            fillcolor="#F0FFF0"
+            penwidth=2
+
+            cost_sp [label="Cost SP" fillcolor="#228B22" color="#1A6B1A" fontcolor="white" fixedsize=true width=1.8 height=0.45]
+            costmodels [label="Cost Models\n& Price Lists" fillcolor="#2E8B57" color="#1A6B1A" fontcolor="white" fixedsize=true width=1.8 height=0.55]
+            distribution [label="Overhead\nDistribution" fillcolor="#2E8B57" color="#1A6B1A" fontcolor="white" fixedsize=true width=1.8 height=0.55]
+            reports [label="Cost\nReports" fillcolor="#2E8B57" color="#1A6B1A" fontcolor="white" fixedsize=true width=1.8 height=0.55]
+
+            cost_sp -> costmodels -> distribution -> reports
+        }
+
+        billing [label="Billing / ERP Systems" fillcolor="#F0F0F0" color="#888888" fontcolor="#151515"]
+
+        // === Edges ===
+
+        // Users -> DCM
+        operator -> dcm
+        tenants -> dcm
+
+        // DCM fans out to three columns
+        dcm -> cluster_sp [lhead=cluster_sps color="#4444CC"]
+        dcm -> c1 [lhead=cluster_fleet color="#B8860B"]
+        dcm -> cost_sp [lhead=cluster_costmgmt color="#228B22"]
+
+        // Cross: SP provisions Fleet
+        cluster_sp -> c1 [label="provisions" style=dashed color="#888888" fontcolor="#888888" constraint=false]
+
+        // Cross: Fleet metering data -> Cost Mgmt
+        c1 -> costmodels [label=" metrics\n data " style=dashed color="#228B22" fontcolor="#228B22" constraint=false]
+        c2 -> costmodels [style=dashed color="#228B22" constraint=false]
+        cn -> costmodels [style=dashed color="#228B22" constraint=false]
+
+        // Cost reports -> Billing
+        reports -> billing [label="  metering data /\n  cost reports  " style=dashed color="#228B22" fontcolor="#228B22"]
+    }
+}
