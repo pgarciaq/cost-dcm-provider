@@ -57,6 +57,14 @@ that already have the metrics operator, Koku is **already tracking their costs**
 — the bridge only needs to provide ID correlation, not trigger new data
 collection.
 
+### Architecture Note: Multi-Architecture Support
+
+The Koku pipeline supports clusters running on x86-64, ARM, IBM Z, LinuxOne,
+and POWER with identical data flow — the koku-metrics-operator, CSV format,
+ingestion pipeline, and cost model application are architecture-agnostic. The
+DCM integration bridge inherits this coverage automatically; no special
+handling is required for non-x86 clusters.
+
 ---
 
 ## 2. Problem Statement
@@ -90,7 +98,8 @@ Neither system talks to the other.
 
 1. **koku-metrics-operator** runs on each OpenShift cluster
 2. Queries **Prometheus/Thanos** every hour for node, pod, storage, namespace,
-   VM, and GPU metrics
+   VM, and GPU metrics (on clusters running x86-64, ARM, IBM Z, LinuxOne,
+   or POWER — the operator and pipeline are architecture-agnostic)
 3. Generates **CSV files** (pod usage, storage usage, node labels, namespace
    labels, VM usage, GPU usage)
 4. Packages CSVs + `manifest.json` into a **tar.gz**
@@ -129,6 +138,11 @@ node_role, resource_id, pod_labels
    redistributed to user projects
 7. **UI summary population** — aggregated into partitioned summary tables
 
+Across these steps, Koku supports more than **40 cost dimensions** — from CPU
+core-hours (usage, request, effective) and memory GB-hours to node-months,
+cluster-months, VM core-hours, PVC-months, project-months, and GPU (physical
+devices and NVIDIA MIG) — with every metric parameterizable by tag.
+
 ### What Koku Needs Per Cluster
 
 To calculate costs for an OpenShift cluster, Koku requires:
@@ -139,6 +153,18 @@ To calculate costs for an OpenShift cluster, Koku requires:
   labels, optionally VM and GPU data
 - For **OCP-on-cloud**: infrastructure raw costs from the cloud provider
   (AWS CUR, Azure exports, GCP BigQuery)
+
+These requirements apply regardless of cluster architecture (x86-64, ARM,
+IBM Z, LinuxOne, POWER) — the pipeline is identical for all platforms.
+
+> **Cloud cost management.** Beyond on-premise OpenShift, Koku also supports
+> cloud costs on Amazon Web Services, Microsoft Azure, and Google Cloud — any
+> cloud service, including private offers and managed OpenShift (ROSA — Red Hat
+> OpenShift on AWS — and ARO — Azure Red Hat OpenShift). For ROSA and ARO, the
+> cost of OpenShift subscriptions is automatically factored in and distributed
+> to workloads. While DCM integration focuses on the on-premise use case, the
+> same Koku instance can provide a unified cost view across on-premise and
+> cloud infrastructure for hybrid sovereign environments.
 
 ---
 
@@ -504,7 +530,10 @@ expose cost data back through DCM's native APIs.
 ```
 
 This is a **read-only SP** — it doesn't provision anything, it provides cost
-data for resources managed by other SPs.
+data for resources managed by other SPs. These endpoints expose Koku's full
+data export capability — all metering and cost data collected across 40+
+dimensions is queryable via the SP's API, enabling integration with billing,
+ERP, and BI systems.
 
 ### API Surface
 

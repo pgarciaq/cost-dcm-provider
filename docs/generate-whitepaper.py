@@ -163,7 +163,7 @@ toc_entries = [
     (2, "3.4 Competitive Differentiation"),
     (1, "4. The On-Premise Advantage: Keeping Financial Data Sovereign"),
     (2, "What It Measures"),
-    (2, "Why It Leads the Market for On-Premise OpenShift"),
+    (2, "Why It Leads the Market"),
     (1, "5. From Metering to Monetization: The DCM Approach"),
     (2, "5.1 What Is DCM?"),
     (2, "5.2 Closing the Loop: Cost as a First-Class Service"),
@@ -205,7 +205,7 @@ parts.append(body_para(
 parts.append(body_para(
     r("This paper argues that "),
     r("metering, costing, and chargeback are foundational capabilities", bold=True),
-    r(" for any provider that wants to monetize sovereign infrastructure. It examines why existing FinOps tools fall short in sovereign and on-premise environments, introduces an architecture that keeps all financial and usage data inside the provider\u2019s perimeter, and shows how Red Hat Lightspeed Cost Management and the DCM (Data Center Management) project together close the gap between \u201Cwe provision infrastructure\u201D and \u201Cwe get paid for it.\u201D"),
+    r(" for any provider that wants to monetize sovereign infrastructure. It examines why existing FinOps tools fall short in sovereign and on-premise environments, introduces an architecture that keeps all financial and usage data inside the provider\u2019s perimeter, and shows how Red Hat Lightspeed Cost Management and the DCM (Data Center Management) project together close the gap between \u201Cwe provision infrastructure\u201D and \u201Cwe get paid for it.\u201D Red Hat Lightspeed Cost Management offers more than 40 cost dimensions, is the only tool that supports metering and costing of OpenShift on IBM Z, LinuxOne, and POWER, and makes all metering and cost data available via REST API for integration with any billing, ERP, or business intelligence system."),
 ))
 parts.append(body_text("The audience is CIOs, CTOs, and technology leaders at sovereign cloud providers, datacenter operators, managed service providers, and large enterprises that operate an internal IT-as-a-service model for their divisions or subsidiaries."))
 
@@ -238,6 +238,7 @@ parts.append(body_text("Open source tools like KubeCost and OpenCost provide use
 parts.append(bullet_bold("No overhead distribution. ", "They cannot categorize and allocate the cost of running the platform itself \u2014 control plane nodes, platform-level projects, unallocated worker capacity, storage overhead, GPU overhead, and network overhead \u2014 back to tenant workloads."))
 parts.append(bullet_bold("Limited cost model flexibility. ", "They do not support the fine-grained metering and rating that a commercial provider needs: configurable per-core-hour, per-GB-month, per-PVC, per-VM-hour, or tiered rates with markup percentages."))
 parts.append(bullet_bold("No deep OpenShift awareness. ", "These tools treat OpenShift as generic Kubernetes. They lack native understanding of OpenShift-specific constructs such as OpenShift Virtualization VMs, operator-managed workloads, and the platform\u2019s overhead categorization model."))
+parts.append(bullet_bold("No support for non-x86 architectures. ", "These tools do not support OpenShift on IBM Z, LinuxOne, or POWER \u2014 platforms that are foundational in regulated banking, government, and mainframe-centric sovereign environments. Providers whose customers run workloads on these architectures have no open source FinOps option other than Red Hat Lightspeed Cost Management."))
 
 parts.append(heading2("2.3 No Path from Metering to Billing"))
 parts.append(body_text("Even where an open source tool provides raw utilization data, it stops at the boundary of metering. It does not answer the questions a provider needs to run a business:"))
@@ -253,6 +254,7 @@ parts.append(body_text("Sovereign cloud infrastructure is expensive to build and
 parts.append(heading2("3.1 Revenue Enablement"))
 parts.append(body_text("A sovereign cloud provider\u2019s revenue model depends entirely on its ability to measure what was consumed and attach a price to it. Without metering, there is no usage record. Without costing, there is no invoice. Without an invoice, there is no revenue. The financial layer is not a nice-to-have \u2014 it is the mechanism that turns infrastructure investment into a going concern."))
 parts.append(body_text("The same logic applies to large enterprises that operate an internal IT-as-a-service model. A multinational corporation, a government ministry, or a conglomerate with multiple subsidiaries \u2014 each running workloads on shared OpenShift infrastructure \u2014 faces the identical challenge: demonstrating what each business unit consumed and what it cost."))
+parts.append(body_text("Critically, all metering and cost data is available via a comprehensive REST API, enabling direct integration with any billing platform, ERP system, or business intelligence tool \u2014 Excel, Power BI, Tableau, Grafana, and others \u2014 so the financial data stays sovereign while still powering the provider\u2019s entire commercial stack."))
 
 parts.append(heading2("3.2 Operational Visibility"))
 parts.append(body_text("Even before pricing is applied, metering data provides critical operational insight. Understanding where compute capacity is consumed, which namespaces are over-provisioned, and how platform overhead compares to tenant workloads enables the provider to optimize infrastructure utilization and defer capital expenditure."))
@@ -263,6 +265,7 @@ parts.append(body_text("Regulators increasingly expect not just technical sovere
 
 parts.append(heading2("3.4 Competitive Differentiation"))
 parts.append(body_text("The sovereign cloud market is growing rapidly, but so is competition. National and regional providers in Europe, the Middle East, and Asia-Pacific are building offerings at pace. A provider that can offer not just sovereign infrastructure but also transparent, self-service cost management and chargeback creates a differentiated customer experience that rivals the financial transparency of the hyperscalers \u2014 without the sovereignty trade-offs."))
+parts.append(body_text("The differentiation extends to technology coverage. Red Hat Lightspeed Cost Management is the only metering and cost management tool \u2014 open source or commercial \u2014 that supports OpenShift on IBM Z, LinuxOne, and POWER. These platforms remain essential in sovereign banking, government, and mainframe-centric environments. No competing FinOps tool offers this coverage, making it a decisive factor for providers whose customers run workloads on these architectures."))
 
 # === SECTION 4 ===
 parts.append(heading1("4. The On-Premise Advantage: Keeping Financial Data Sovereign"))
@@ -275,17 +278,21 @@ parts.append(body_text("Red Hat Lightspeed Cost Management meets this requiremen
 
 parts.append(heading2("What It Measures"))
 parts.append(body_text("Red Hat Lightspeed Cost Management provides three tiers of visibility, each building on the previous:"))
-parts.append(bold_intro("Tier 1 \u2014 Basic Metering. ", "Without any configuration beyond deploying the metrics operator on each OpenShift cluster, the system collects and reports raw utilization and capacity data: CPU, memory, and storage."))
+parts.append(bold_intro("Tier 1 \u2014 Basic Metering. ", "Without any configuration beyond deploying the metrics operator on each OpenShift cluster, the system collects and reports raw utilization and capacity data: CPU, memory, and storage. The metrics operator runs on all supported architectures \u2014 x86-64, ARM, IBM Z, LinuxOne, and POWER \u2014 making Red Hat Lightspeed Cost Management the only tool that can meter OpenShift across the full range of platforms found in sovereign environments."))
 parts.append(bold_intro("Tier 2 \u2014 Metering with Distribution. ", "By attaching a cost model to a cluster, the system activates its overhead distribution engine. The cost of running OpenShift itself \u2014 control plane, platform projects, worker unallocated capacity, storage, GPU, and network overhead \u2014 is categorized and distributed proportionally across tenant projects."))
-parts.append(bold_intro("Tier 3 \u2014 Full Cost Management. ", "By adding a price list to the cost model, the system applies rates to every measurable dimension: CPU core-hours, memory GB-hours, persistent volume claims, node utilization, VM hours, and more."))
+parts.append(bold_intro("Tier 3 \u2014 Full Cost Management. ", "By adding a price list to the cost model, the system applies rates across more than 40 cost dimensions: CPU core-hours (usage, request, and effective), memory GB-hours, storage GB-months, node cost per core-hour or per month, cluster cost per month, OpenShift Virtualization VM hours and VM core-hours, PVC months, project months, and GPU (physical devices and NVIDIA MIG slices) \u2014 with every metric parameterizable by tag for fine-grained allocation. All metering and cost data is available via a comprehensive REST API, enabling integration with any billing, ERP, or BI system."))
 
-parts.append(heading2("Why It Leads the Market for On-Premise OpenShift"))
+parts.append(heading2("Why It Leads the Market"))
 parts.append(body_text("For sovereign cloud providers running OpenShift, Red Hat Lightspeed Cost Management offers capabilities that no competing tool matches in an on-premise deployment:"))
 parts.append(bullet_bold("Deep OpenShift integration. ", "The metrics operator is purpose-built for OpenShift, collecting data directly from Prometheus and Thanos with full awareness of OpenShift constructs."))
 parts.append(bullet_bold("Overhead distribution. ", "No other on-premise tool can categorize and distribute platform overhead back to tenant projects."))
 parts.append(bullet_bold("Configurable cost models. ", "Providers can define per-cluster cost models with tiered rates, tag-based rates, markup, and distribution rules."))
 parts.append(bullet_bold("Multi-cluster aggregation. ", "A single instance manages cost data from an entire fleet of clusters."))
 parts.append(bullet_bold("Complete data residency. ", "All metering data, cost calculations, and reports are stored and processed locally."))
+parts.append(bullet_bold("Multi-architecture. ", "The only FinOps tool \u2014 open source or commercial \u2014 that supports OpenShift on IBM Z, LinuxOne, and POWER, alongside x86-64 and ARM."))
+parts.append(bullet_bold("GPU and AI workload metering. ", "Native support for GPU cost tracking (physical devices and NVIDIA MIG slices) and OpenShift AI subscription metering. Support for Model-as-a-Service inference costing and agentic AI workload attribution is in active development."))
+parts.append(bullet_bold("Full API data export. ", "All metering and cost data is available via REST API, enabling integration with billing platforms, ERP systems, and BI tools without data leaving the sovereign perimeter."))
+parts.append(bullet_bold("Cloud cost management. ", "Beyond on-premise OpenShift, it also supports cloud costs on Amazon Web Services, Microsoft Azure, and Google Cloud \u2014 any cloud service, including private offers and managed OpenShift (ROSA and ARO). For ROSA and ARO, the cost of OpenShift subscriptions is automatically factored in and distributed to workloads, giving hybrid sovereign environments a single pane of glass."))
 parts.append(bullet_bold("100% open source. ", "The entire stack is open source (Project Koku). Providers can inspect, audit, and modify any component."))
 
 # === SECTION 5 ===
@@ -305,6 +312,7 @@ parts.append(body_text("The integration of Red Hat Lightspeed Cost Management wi
 parts.append(numbered(4, r("Registers the cluster", bold=True) + r(" for metering \u2014 the metrics operator begins collecting utilization data within minutes.")))
 parts.append(numbered(4, r("Applies the appropriate cost model", bold=True) + r(" based on the tenant\u2019s contract tier and the catalog item they selected.")))
 parts.append(numbered(4, r("Begins tracking costs", bold=True) + r(" from the moment the cluster is operational, with no manual setup required.")))
+parts.append(body_text("This applies uniformly across all supported architectures \u2014 x86-64, ARM, IBM Z, LinuxOne, and POWER \u2014 and includes GPU overhead distribution for clusters equipped with GPUs. All cost data is accessible via the REST API, enabling DCM or downstream billing systems to query costs programmatically."))
 
 parts.append(heading2("5.3 Three Operating Models"))
 parts.append(bold_intro("Fully Automated. ", "A policy-driven model where every cluster provisioned through DCM is automatically enrolled for metering and costing. The platform operator configures the rules once; the system applies them consistently."))
@@ -316,18 +324,18 @@ parts.append(heading1("6. Real-World Applications"))
 parts.append(body_text("Sovereign cloud providers and datacenter operators across multiple regions and industries are already finding that the combination of on-premise cost management and sovereign infrastructure orchestration addresses critical business needs."))
 
 parts.append(heading2("Sovereign Cloud Providers"))
-parts.append(body_text("A leading Swiss sovereign cloud provider built its platform on Red Hat OpenShift, offering public and private cloud options to customers in regulated sectors including finance, healthcare, and government. By integrating cost transparency directly into its self-service portal, the provider reduced customer onboarding time and enabled tenants to monitor their own consumption in real time."))
-parts.append(body_text("An Indian sovereign AI infrastructure provider built a sovereign AI factory on Red Hat technologies, serving government entities and businesses that require localized, high-performance AI infrastructure with data that remains within the country\u2019s borders."))
+parts.append(body_text("A leading Swiss sovereign cloud provider built its platform on Red Hat OpenShift, offering public and private cloud options to customers in regulated sectors including finance, healthcare, and government. By integrating cost transparency directly into its self-service portal, the provider reduced customer onboarding time and enabled tenants to monitor their own consumption in real time. The provider uses the REST API to export cost data into its existing billing platform, enabling automated invoice generation without any data leaving its sovereign perimeter."))
+parts.append(body_text("An Indian sovereign AI infrastructure provider built a sovereign AI factory on Red Hat technologies, serving government entities and businesses that require localized, high-performance AI infrastructure with data that remains within the country\u2019s borders. GPU metering enables the provider to bill customers per GPU-hour and per NVIDIA MIG slice, a granularity that no other on-premise FinOps tool provides."))
 
 parts.append(heading2("Regulated Financial Services"))
-parts.append(body_text("A leading European bank is running a sovereign AI factory platform built on Red Hat OpenShift AI, delivering GPU-as-a-Service and LLM-as-a-Service across the group. To sustain the investment and allocate costs fairly across business units, the bank requires granular metering of GPU hours, model inference requests, and storage consumption \u2014 all retained within its own infrastructure."))
+parts.append(body_text("A leading European bank is running a sovereign AI factory platform built on Red Hat OpenShift AI, delivering GPU-as-a-Service and LLM-as-a-Service across the group. To sustain the investment and allocate costs fairly across business units, the bank requires granular metering of GPU hours, model inference requests, and storage consumption \u2014 all retained within its own infrastructure. The bank\u2019s core systems run on IBM Z; Red Hat Lightspeed Cost Management is the only tool that can meter OpenShift workloads on Z and the GPU clusters in a unified view, with all cost data exported via the API to the bank\u2019s internal ERP system."))
 
 parts.append(heading2("Defense and Government"))
 parts.append(body_text("Defense organizations represent perhaps the most demanding use case for sovereign cost management. A European air force deployed Red Hat OpenShift on portable edge datacenters to maintain operations during network outages, running AI workloads locally in disconnected environments."))
-parts.append(body_text("Government agencies across Europe are building sovereign cloud infrastructure aligned with national strategies: France\u2019s SecNumCloud, Germany\u2019s BSI C5, Italy\u2019s Polo Strategico Nazionale, Spain\u2019s National Cloud Strategy, and Nordic \u201CPlan B\u201D hybrid architectures."))
+parts.append(body_text("Government agencies across Europe are building sovereign cloud infrastructure aligned with national strategies: France\u2019s SecNumCloud, Germany\u2019s BSI C5, Italy\u2019s Polo Strategico Nazionale, Spain\u2019s National Cloud Strategy, and Nordic \u201CPlan B\u201D hybrid architectures. Many of these environments include IBM Z or POWER systems for legacy workloads, making cross-architecture metering a key requirement."))
 
 parts.append(heading2("Internal IT-as-a-Service"))
-parts.append(body_text("The same architecture applies to large enterprises operating an internal shared-services model. Red Hat Lightspeed Cost Management\u2019s overhead distribution capability enables the central IT organization to transparently allocate not just direct workload costs but also the shared platform overhead \u2014 proportionally to each business unit based on their actual usage."))
+parts.append(body_text("The same architecture applies to large enterprises operating an internal shared-services model. Red Hat Lightspeed Cost Management\u2019s overhead distribution capability enables the central IT organization to transparently allocate not just direct workload costs but also the shared platform overhead \u2014 proportionally to each business unit based on their actual usage. In organizations that span x86-64, ARM, and IBM Z or POWER infrastructure, the tool provides a unified view of costs across all platforms. The REST API enables automated export of cost reports to the enterprise\u2019s financial systems, eliminating manual reconciliation."))
 
 # === SECTION 7: Architecture ===
 parts.append(heading1("7. Architecture at a Glance"))

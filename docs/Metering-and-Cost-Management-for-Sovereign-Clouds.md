@@ -21,7 +21,11 @@ It examines why existing FinOps tools fall short in sovereign and on-premise
 environments, introduces an architecture that keeps all financial and usage data
 inside the provider's perimeter, and shows how Red Hat Lightspeed Cost
 Management and the DCM (Data Center Management) project together close the gap
-between "we provision infrastructure" and "we get paid for it."
+between "we provision infrastructure" and "we get paid for it." Red Hat
+Lightspeed Cost Management offers more than 40 cost dimensions, is the only
+tool that supports metering and costing of OpenShift on IBM Z, LinuxOne, and
+POWER, and makes all metering and cost data available via REST API for
+integration with any billing, ERP, or business intelligence system.
 
 The audience is CIOs, CTOs, and technology leaders at sovereign cloud providers,
 datacenter operators, managed service providers, and large enterprises that
@@ -112,6 +116,12 @@ a commercial billing operation on top of OpenShift:
   such as OpenShift Virtualization VMs, operator-managed workloads, and the
   platform's overhead categorization model — all of which are essential for
   accurate metering in a sovereign OpenShift environment.
+- **No support for non-x86 architectures.** These tools do not support
+  OpenShift on IBM Z, LinuxOne, or POWER — platforms that are foundational
+  in regulated banking, government, and mainframe-centric sovereign
+  environments. Providers whose customers run workloads on these
+  architectures have no open source FinOps option other than Red Hat
+  Lightspeed Cost Management.
 
 ### 2.3 No Path from Metering to Billing
 
@@ -158,6 +168,11 @@ organization cannot recover costs, justify its budget, or make credible
 capacity-planning decisions. Whether the "customer" is an external client
 paying an invoice or an internal division receiving a chargeback allocation,
 the requirement is the same: accurate, auditable metering and costing.
+Critically, all metering and cost data is available via a comprehensive REST
+API, enabling direct integration with any billing platform, ERP system, or
+business intelligence tool — Excel, Power BI, Tableau, Grafana, and others —
+so the financial data stays sovereign while still powering the provider's
+entire commercial stack.
 
 ### 3.2 Operational Visibility
 
@@ -198,6 +213,14 @@ day one was a key differentiator in winning government and regulated-industry
 contracts, where procurement teams demanded full visibility into
 per-workload costs.
 
+The differentiation extends to technology coverage. Red Hat Lightspeed Cost
+Management is the only metering and cost management tool — open source or
+commercial — that supports OpenShift on IBM Z, LinuxOne, and POWER. These
+platforms remain essential in sovereign banking, government, and
+mainframe-centric environments. No competing FinOps tool offers this coverage,
+making it a decisive factor for providers whose customers run workloads on
+these architectures.
+
 ---
 
 ## 4. The On-Premise Advantage: Keeping Financial Data Sovereign
@@ -223,8 +246,12 @@ building on the previous:
 
 **Tier 1 — Basic Metering.** Without any configuration beyond deploying the
 metrics operator on each OpenShift cluster, the system collects and reports raw
-utilization and capacity data: CPU, memory, and storage. This provides
-immediate visibility into what is being consumed across the fleet.
+utilization and capacity data: CPU, memory, and storage. The metrics operator
+runs on all supported architectures — x86-64, ARM, IBM Z, LinuxOne, and
+POWER — making Red Hat Lightspeed Cost Management the only tool that can
+meter OpenShift across the full range of platforms found in sovereign
+environments. This provides immediate visibility into what is being consumed
+across the fleet.
 
 **Tier 2 — Metering with Distribution.** By attaching a cost model to a
 cluster (without a price list), the system activates its overhead distribution
@@ -236,12 +263,18 @@ provider that needs to understand the fully loaded cost of serving each
 tenant.
 
 **Tier 3 — Full Cost Management.** By adding a price list to the cost model,
-the system applies rates to every measurable dimension: CPU core-hours, memory
-GB-hours, persistent volume claims, node utilization, VM hours, and more. The
-provider can define different rate cards for different customers, apply markup
-percentages, and export cost reports suitable for feeding into billing and
-ERP systems. This is the tier that enables the transition from "we know what
-was used" to "we know what to charge."
+the system applies rates across more than 40 cost dimensions: CPU core-hours
+(usage, request, and effective), memory GB-hours, storage GB-months, node
+cost per core-hour or per month, cluster cost per month, OpenShift
+Virtualization VM hours and VM core-hours, PVC months, project months, and
+GPU (physical devices and NVIDIA MIG slices) — with every metric
+parameterizable by tag for fine-grained allocation. The provider can define
+different rate cards for different customers, apply markup percentages, and
+choose CPU-weighted, memory-weighted, or GPU-weighted overhead distribution.
+All metering and cost data is available via a comprehensive REST API,
+enabling integration with any billing, ERP, or BI system (Excel, Power BI,
+Tableau, Grafana, and others). This is the tier that enables the transition
+from "we know what was used" to "we know what to charge."
 
 ### Why It Leads the Market for On-Premise OpenShift
 
@@ -250,6 +283,19 @@ leading enterprise Kubernetes platform, is the natural foundation for sovereign
 infrastructure — Red Hat Lightspeed Cost Management offers capabilities that
 no competing tool matches in an on-premise deployment:
 
+- **Only tool supporting IBM Z, LinuxOne, and POWER.** No other metering or
+  FinOps tool — open source or commercial — supports OpenShift on IBM Z,
+  LinuxOne, and POWER. For sovereign environments built on mainframe and
+  POWER infrastructure, this is a unique and decisive capability.
+- **40+ cost dimensions.** From CPU core-hours and memory GB-hours to
+  node-months, cluster-months, VM core-hours, PVC-months, project-months,
+  and GPU — with every metric parameterizable by tag. This granularity
+  enables commercial billing at a level of detail that matches hyperscaler
+  billing systems.
+- **GPU and AI workload metering.** Native support for GPU utilization
+  (physical devices and NVIDIA MIG), OpenShift AI subscription costing,
+  and the ability to meter AI-specific workloads. Support for
+  model-as-a-service and agentic AI cost metering is in active development.
 - **Deep OpenShift integration.** The metrics operator is purpose-built for
   OpenShift, collecting data directly from Prometheus and Thanos with full
   awareness of OpenShift constructs: projects, nodes, persistent volumes,
@@ -263,9 +309,19 @@ no competing tool matches in an on-premise deployment:
 - **Multi-cluster aggregation.** A single instance manages cost data from
   an entire fleet of clusters, providing a unified view across the
   provider's infrastructure.
-- **Complete data residency.** All metering data, cost calculations, and
-  reports are stored and processed locally. No telemetry leaves the
-  sovereign perimeter.
+- **Complete data residency with full API export.** All metering data, cost
+  calculations, and reports are stored and processed locally. No telemetry
+  leaves the sovereign perimeter. All data is accessible via REST API for
+  integration with billing, ERP, and BI systems — keeping data sovereign
+  while powering the provider's entire commercial stack.
+- **Cloud cost management.** Beyond on-premise OpenShift, Red Hat Lightspeed
+  Cost Management also supports cloud costs on Amazon Web Services, Microsoft
+  Azure, and Google Cloud — any cloud service, including private offers and
+  managed OpenShift (ROSA — Red Hat OpenShift on AWS — and ARO — Azure Red
+  Hat OpenShift). For ROSA and ARO, the cost of OpenShift subscriptions is
+  automatically factored in and distributed to workloads. This gives hybrid
+  sovereign environments a single pane of glass across on-premise and cloud
+  infrastructure.
 - **100% open source.** The entire stack — from the metrics operator to the
   cost engine — is open source (Project Koku). Providers can inspect, audit,
   and modify any component, ensuring the same level of transparency in the
@@ -379,6 +435,9 @@ require localized, high-performance AI infrastructure with data that remains
 within the country's borders. For this provider, the ability to meter GPU
 utilization and AI workload consumption — without transmitting that sensitive
 operational data to external platforms — was a non-negotiable requirement.
+Red Hat Lightspeed Cost Management's support for OpenShift on IBM Z and
+POWER is equally relevant for sovereign providers whose customers run
+mixed-architecture fleets, since no competing tool can meter these platforms.
 
 ### Regulated Financial Services
 
@@ -387,13 +446,21 @@ Red Hat OpenShift AI, delivering GPU-as-a-Service and LLM-as-a-Service across
 the group. The platform serves a large and diverse internal user base. To
 sustain the investment and allocate costs fairly across business units, the
 bank requires granular metering of GPU hours, model inference requests, and
-storage consumption — all retained within its own infrastructure.
+storage consumption — all retained within its own infrastructure. Red Hat
+Lightspeed Cost Management's native GPU metering (including NVIDIA MIG) and
+OpenShift AI subscription costing directly enable this billing model. All
+cost data is exportable via API to the bank's internal ERP and financial
+reporting systems, keeping the entire billing pipeline sovereign.
 
 A Turkish financial institution with more than 150 data scientists operates a
 sovereign model development environment on Red Hat technologies. The
 institution needs to track and allocate the cost of compute consumed by each
 team and project, enabling internal chargeback and budget governance while
-meeting the country's strict data sovereignty requirements.
+meeting the country's strict data sovereignty requirements. With more than
+40 cost dimensions — from CPU and memory to GPU, VM hours, and
+project-months — Red Hat Lightspeed Cost Management enables precise per-team
+allocation at a granularity that matches the institution's internal billing
+requirements.
 
 ### Defense and Government
 
@@ -425,7 +492,11 @@ transparently allocate not just direct workload costs but also the shared
 platform overhead — control plane, monitoring, security infrastructure —
 proportionally to each business unit based on their actual usage. This
 transforms the IT budget conversation from "IT costs too much" to "Here is
-exactly what each division's infrastructure costs, and here is why."
+exactly what each division's infrastructure costs, and here is why." All
+metering and cost data is available via REST API, enabling the central IT
+organization to feed data directly into corporate ERP, financial planning,
+and BI tools — making chargeback reports as automated and transparent as the
+infrastructure provisioning itself.
 
 ---
 

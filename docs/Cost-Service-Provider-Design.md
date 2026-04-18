@@ -51,12 +51,22 @@ understanding where cluster overhead goes, even without dollar amounts.
 **Tier 3 — Full Cost (cost model with price list).**
 A price list (rates) is attached to the cost model. Now every metric in the
 price list becomes a measurable quantity with a price: CPU core-hours, memory
-GB-hours, node utilization, PVC count, VM core-hours, VM hours, and anything
-else in the Koku price list. This is `cost = metering × rate`.
+GB-hours, node utilization, PVC count, VM core-hours, VM hours, GPU, and
+more — over 40 cost dimensions in total, with every metric parameterizable
+by tag. This is `cost = metering × rate`.
 
 Each tier is an additive step. The SP supports all three through a single
 instance — the difference is what's in the spec: no `cost_model`, a
 `cost_model` without `rates`, or a `cost_model` with `rates`.
+
+> **Cloud cost management.** Koku also supports cloud costs on Amazon Web
+> Services, Microsoft Azure, and Google Cloud — any cloud service, including
+> private offers and managed OpenShift (ROSA — Red Hat OpenShift on AWS — and
+> ARO — Azure Red Hat OpenShift). For ROSA and ARO, the cost of OpenShift
+> subscriptions is automatically factored in and distributed to workloads. While
+> the cost SP focuses on on-premise cluster metering, hybrid sovereign
+> environments can use the same Koku instance for a unified cost view across
+> on-premise and cloud infrastructure.
 
 ### Design Questions
 
@@ -77,8 +87,9 @@ instance — the difference is what's in the spec: no `cost_model`, a
    configures Koku via its REST API. It does not duplicate Koku's metering
    pipeline, rate engine, distribution logic, or reporting.
 3. **Full-cluster visibility.** Every `cost` instance covers the entire
-   cluster — all namespaces, pods, PVCs, VMs. Per-resource drill-down is a
-   query filter, not a separate instance.
+   cluster — all namespaces, pods, PVCs, VMs — on all supported
+   architectures (x86-64, ARM, IBM Z, LinuxOne, POWER). Per-resource
+   drill-down is a query filter, not a separate instance.
 4. **Three tiers, one instance.** Basic metering flows with no cost model.
    Adding a cost model enables overhead distribution. Adding a price list
    enables full financial metering. The operator chooses the tier per class
@@ -314,6 +325,11 @@ The provider registers with DCM's SPM on startup:
 }
 ```
 
+> **Note:** `OCP` sources encompass OpenShift clusters on all supported
+> architectures: x86-64, ARM, IBM Z, LinuxOne, and POWER. No special source
+> type or configuration is needed for non-x86 clusters — the metrics operator
+> and Koku pipeline are architecture-agnostic.
+
 ### Endpoint Contract
 
 The SP implements the standard SPRM contract:
@@ -507,7 +523,10 @@ time and grants access to create/manage sources and cost models.
 In addition to the standard SPRM lifecycle, the SP exposes a **read-only API
 for metering and cost queries on its own HTTP server**. These are new
 endpoints served by `koku-cost-provider`, not by DCM core. DCM's gateway or
-CLI calls them; they are not part of the SPRM contract.
+CLI calls them; they are not part of the SPRM contract. These endpoints
+provide access to the full dataset — all metering and cost data collected
+across Koku's 40+ cost dimensions — and can be used for data export to
+billing, ERP, and BI systems.
 
 **Metering endpoints** (always available — no cost model required):
 
@@ -657,7 +676,8 @@ memory-weighted distribution at the catalog item level (fixing it for all
 clusters in this class) or leave it editable for per-cluster override. No
 rates, no markup, no dollar amounts — but overhead is categorized and
 distributed across projects, enabling capacity planning and overhead
-attribution.
+attribution. Distribution includes GPU unattributed overhead and works on
+all supported architectures, including IBM Z, LinuxOne, and POWER.
 
 ### 5.3 Standard Cluster Cost Tracking (Tier 3)
 
@@ -716,6 +736,14 @@ spec:
 **Typical use:** The bridge auto-creates this for production clusters. All
 fields are fixed by the operator — rates, markup, distribution, currency.
 The default catalog item for clusters with no specific label override.
+
+> **Note:** The four rates shown above are a representative subset. Koku
+> supports **40+ cost dimensions** including CPU core-hours (usage, request,
+> effective), memory GB-hours, storage GB-months, node cost per core-hour or
+> per month, cluster cost per month, OpenShift Virtualization VM hours and VM
+> core-hours, PVC months, project months, and GPU (physical devices and NVIDIA
+> MIG) — with every metric parameterizable by tag. Operators can add any
+> combination of these dimensions to the rate list.
 
 ### 5.4 Custom Cluster Cost Tracking (Tier 3)
 
