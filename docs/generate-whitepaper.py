@@ -123,6 +123,29 @@ def image_para(rid, cx, cy):
 def empty():
     return p()
 
+# Track hyperlink relationships (rId -> URL) for document.xml.rels
+hyperlink_rels = {}
+_hyperlink_counter = [100]
+
+def hyperlink_run(text, rid, sz=None, bold=False):
+    """Return a w:hyperlink element wrapping a styled run."""
+    rpr_parts = ['<w:color w:val="0563C1"/>', '<w:u w:val="single"/>']
+    if bold:
+        rpr_parts.append('<w:b w:val="1"/><w:bCs w:val="1"/>')
+    if sz:
+        rpr_parts.append(f'<w:sz w:val="{sz}"/><w:szCs w:val="{sz}"/>')
+    rpr = f'<w:rPr>{"".join(rpr_parts)}</w:rPr>'
+    t = escape(text)
+    sp = ' xml:space="preserve"' if text.startswith(" ") or text.endswith(" ") else ""
+    return f'<w:hyperlink r:id="{rid}"><w:r>{rpr}<w:t{sp}>{t}</w:t></w:r></w:hyperlink>'
+
+def alloc_hyperlink(url):
+    """Allocate a relationship ID for a URL and return it."""
+    _hyperlink_counter[0] += 1
+    rid = f"rId{_hyperlink_counter[0]}"
+    hyperlink_rels[rid] = url
+    return rid
+
 # Build the document body
 parts = []
 
@@ -387,11 +410,15 @@ parts.append(heading2("Resources"))
 resources = [
     ("Red Hat Lightspeed Cost Management", "Product page and documentation", "https://access.redhat.com/products/cost-management"),
     ("Project Koku", "Open source upstream for Red Hat Lightspeed Cost Management", "https://project-koku.github.io/"),
-    ("koku-metrics-operator", "OpenShift operator for metering data collection", "https://github.com/project-koku/koku-metrics-operator"),
     ("DCM Project", "Data Center Management control plane", "https://dcm-project.github.io/"),
 ]
 for name, desc, url in resources:
-    parts.append(body_para(r(name, bold=True, sz="18", color="666666"), r(f" \u2014 {desc}: {url}", sz="18", color="666666")))
+    rid = alloc_hyperlink(url)
+    parts.append(f'<w:p><w:pPr><w:spacing w:after="120"/></w:pPr>'
+                 f'{r(name, bold=True, sz="18", color="666666")}'
+                 f'{r(" \u2014 " + desc + ": ", sz="18", color="666666")}'
+                 f'{hyperlink_run(url, rid, sz="18")}'
+                 f'</w:p>')
 
 body_xml = "\n".join(parts)
 
@@ -430,6 +457,9 @@ rels_path = WORK / "word" / "_rels" / "document.xml.rels"
 rels_text = rels_path.read_text()
 new_rel = '<Relationship Id="rId20" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/architecture-diagram.png"/>'
 rels_text = rels_text.replace("</Relationships>", f"  {new_rel}\n</Relationships>")
+for rid, url in hyperlink_rels.items():
+    h_rel = f'<Relationship Id="{rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="{url}" TargetMode="External"/>'
+    rels_text = rels_text.replace("</Relationships>", f"  {h_rel}\n</Relationships>")
 rels_path.write_text(rels_text)
 
 # Add PNG content type if not present

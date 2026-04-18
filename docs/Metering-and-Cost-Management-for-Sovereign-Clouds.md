@@ -631,8 +631,6 @@ alternatives.
   https://access.redhat.com/products/cost-management
 - **Project Koku** — Open source upstream for Red Hat Lightspeed Cost Management:
   https://project-koku.github.io/
-- **koku-metrics-operator** — OpenShift operator for metering data collection:
-  https://github.com/project-koku/koku-metrics-operator
 - **DCM Project** — Data Center Management control plane:
   https://dcm-project.github.io/
 
