@@ -44,6 +44,15 @@ read-only.
 REST API handles metering storage, cost calculation, rate application,
 distribution, and reporting.
 
+**Fine-grained RBAC.** Koku's role-based access control lets the provider
+aggregate all clusters, VMs, and namespaces in a single instance while
+restricting what each user or tenant can see — enabling tenant self-service
+cost visibility without compromising multi-tenant isolation.
+
+**Resource optimization.** The same Koku instance also provides rightsizing
+recommendations for containers, deployments, and jobs, with both
+cost-optimized and performance-optimized options.
+
 ## Project Structure
 
 ```

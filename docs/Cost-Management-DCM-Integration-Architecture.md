@@ -166,6 +166,14 @@ IBM Z, LinuxOne, POWER) — the pipeline is identical for all platforms.
 > same Koku instance can provide a unified cost view across on-premise and
 > cloud infrastructure for hybrid sovereign environments.
 
+> **Fine-grained RBAC.** Koku's role-based access control allows the provider
+> to aggregate all clusters, VMs, namespaces, and projects in a single
+> instance while restricting what each user — or each sovereign cloud tenant —
+> can see and do. A tenant given read access sees only their own namespaces
+> and costs, never another tenant's data. This is the mechanism that makes
+> tenant self-service cost visibility safe in a multi-tenant sovereign
+> environment.
+
 ---
 
 ## 5. How DCM Works Today

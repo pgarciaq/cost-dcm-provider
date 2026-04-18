@@ -528,6 +528,18 @@ provide access to the full dataset — all metering and cost data collected
 across Koku's 40+ cost dimensions — and can be used for data export to
 billing, ERP, and BI systems.
 
+> **RBAC.** Koku's fine-grained role-based access control restricts what each
+> user — or each sovereign cloud tenant — can see and do. A tenant given read
+> access sees only their own namespaces and costs, never another tenant's
+> data. The SP leverages this to safely expose cost data to tenants via the
+> query API without compromising multi-tenant isolation.
+
+> **Resource optimization.** The same Koku instance that provides cost data
+> also offers a resource optimization feature (ROS) with rightsizing
+> recommendations for containers, deployments, and jobs — optimized for cost
+> or performance. ROS is an adjacent capability available to tenants but is
+> out of scope for the cost SP's lifecycle contract.
+
 **Metering endpoints** (always available — no cost model required):
 
 ```

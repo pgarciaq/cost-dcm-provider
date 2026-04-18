@@ -309,6 +309,12 @@ no competing tool matches in an on-premise deployment:
 - **Multi-cluster aggregation.** A single instance manages cost data from
   an entire fleet of clusters, providing a unified view across the
   provider's infrastructure.
+- **Fine-grained RBAC.** The provider aggregates all clusters, VMs,
+  namespaces, and projects in a single instance, then uses role-based access
+  control to restrict what each user — or each sovereign cloud tenant — can
+  see and do. A tenant given read access to Cost Management sees only their
+  own namespaces and costs, never another tenant's data. This enables tenant
+  self-service cost visibility without compromising multi-tenant isolation.
 - **Complete data residency with full API export.** All metering data, cost
   calculations, and reports are stored and processed locally. No telemetry
   leaves the sovereign perimeter. All data is accessible via REST API for
@@ -322,6 +328,10 @@ no competing tool matches in an on-premise deployment:
   automatically factored in and distributed to workloads. This gives hybrid
   sovereign environments a single pane of glass across on-premise and cloud
   infrastructure.
+- **Resource optimization.** Beyond cost tracking, the platform includes a
+  resource optimization feature that provides rightsizing recommendations for
+  containers, deployments, and jobs — offering both cost-optimized and
+  performance-optimized options to help providers and tenants reduce waste.
 - **100% open source.** The entire stack — from the metrics operator to the
   cost engine — is open source (Project Koku). Providers can inspect, audit,
   and modify any component, ensuring the same level of transparency in the
@@ -407,8 +417,12 @@ introduced incrementally.
 
 **Tenant Self-Service.** Tenants can view their own metering and cost data
 through read-only dashboards, understanding their consumption without needing
-access to the underlying cost management system. This model mirrors the
-cost transparency that tenants expect from hyperscaler environments.
+access to the underlying cost management system. Red Hat Lightspeed Cost
+Management's fine-grained RBAC ensures that each tenant sees only their own
+namespaces, clusters, and costs — never another tenant's data. This model
+mirrors the cost transparency that tenants expect from hyperscaler
+environments while preserving the multi-tenant isolation that sovereign
+providers require.
 
 ---
 
@@ -426,8 +440,10 @@ OpenShift, offering public and private cloud options to customers in regulated
 sectors including finance, healthcare, and government. By integrating cost
 transparency directly into its self-service portal, the provider reduced
 customer onboarding time and enabled tenants to monitor their own consumption
-in real time — a capability that was decisive in winning contracts where
-procurement teams demanded full audit trails of resource usage.
+in real time. Fine-grained RBAC ensures each tenant sees only their own
+namespaces and costs, preserving multi-tenant isolation — a capability that
+was decisive in winning contracts where procurement teams demanded full audit
+trails of resource usage.
 
 An Indian sovereign AI infrastructure provider built a sovereign AI factory
 on Red Hat technologies, serving government entities and businesses that
@@ -492,8 +508,11 @@ transparently allocate not just direct workload costs but also the shared
 platform overhead — control plane, monitoring, security infrastructure —
 proportionally to each business unit based on their actual usage. This
 transforms the IT budget conversation from "IT costs too much" to "Here is
-exactly what each division's infrastructure costs, and here is why." All
-metering and cost data is available via REST API, enabling the central IT
+exactly what each division's infrastructure costs, and here is why."
+Fine-grained RBAC enables each business unit to view its own cost data
+directly — without seeing other divisions' consumption — making self-service
+chargeback practical even across organizational boundaries. All metering and
+cost data is available via REST API, enabling the central IT
 organization to feed data directly into corporate ERP, financial planning,
 and BI tools — making chargeback reports as automated and transparent as the
 infrastructure provisioning itself.
