@@ -177,6 +177,7 @@ toc_entries = [
     (1, "8. Getting Started"),
     (1, "9. Conclusion"),
     (1, "References"),
+    (2, "Resources"),
 ]
 
 def toc_entry(level, title):
@@ -379,6 +380,18 @@ refs = [
 ]
 for ref in refs:
     parts.append(body_para(r(ref, sz="18", color="666666")))
+
+# === RESOURCES ===
+parts.append(empty())
+parts.append(heading2("Resources"))
+resources = [
+    ("Red Hat Lightspeed Cost Management", "Product page and documentation", "https://access.redhat.com/products/cost-management"),
+    ("Project Koku", "Open source upstream for Red Hat Lightspeed Cost Management", "https://project-koku.github.io/"),
+    ("koku-metrics-operator", "OpenShift operator for metering data collection", "https://github.com/project-koku/koku-metrics-operator"),
+    ("DCM Project", "Data Center Management control plane", "https://dcm-project.github.io/"),
+]
+for name, desc, url in resources:
+    parts.append(body_para(r(name, bold=True, sz="18", color="666666"), r(f" \u2014 {desc}: {url}", sz="18", color="666666")))
 
 body_xml = "\n".join(parts)
 

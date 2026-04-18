@@ -625,6 +625,19 @@ alternatives.
 
 ---
 
+## Resources
+
+- **Red Hat Lightspeed Cost Management** — Product page and documentation:
+  https://access.redhat.com/products/cost-management
+- **Project Koku** — Open source upstream for Red Hat Lightspeed Cost Management:
+  https://project-koku.github.io/
+- **koku-metrics-operator** — OpenShift operator for metering data collection:
+  https://github.com/project-koku/koku-metrics-operator
+- **DCM Project** — Data Center Management control plane:
+  https://dcm-project.github.io/
+
+---
+
 *Red Hat, the Red Hat logo, OpenShift, and Ansible are trademarks or registered
 trademarks of Red Hat, Inc. or its subsidiaries in the United States and other
 countries. Linux is the registered trademark of Linus Torvalds in the U.S. and
