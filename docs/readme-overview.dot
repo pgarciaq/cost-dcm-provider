@@ -1,0 +1,75 @@
+digraph ReadmeOverview {
+    graph [
+        fontname="Helvetica,Arial,sans-serif" fontsize=11
+        bgcolor="white" pad="0.4" nodesep=0.7 ranksep=0.5
+        compound=true newrank=true splines=ortho
+        label=<<b>Cost Management Service Provider — End-to-End Flow</b>>
+        labelloc=t labeljust=c fontsize=13
+    ];
+    node [
+        fontname="Helvetica,Arial,sans-serif" fontsize=10
+        shape=box style="rounded,filled" penwidth=1.2
+    ];
+    edge [
+        fontname="Helvetica,Arial,sans-serif" fontsize=8
+        color="#555" penwidth=1.2 arrowsize=0.8
+    ];
+
+    // --- DCM ---
+    subgraph cluster_dcm {
+        label=<<b>DCM Control Plane</b>>
+        fontsize=10 fontcolor="#151515"
+        style="rounded,filled" color="#CC0000" fillcolor="#FFF0F0" penwidth=1.5
+        margin=12
+
+        { rank=same; tenant; operator_node; }
+        tenant [label="Tenant" fillcolor="#F0F0F0" color="#888" fontcolor="#151515"]
+        operator_node [label="Platform Operator" fillcolor="#F0F0F0" color="#888" fontcolor="#151515"]
+
+        catalog [label="Catalog + Policy" fillcolor="#EE0000" color="#CC0000" fontcolor="white"]
+        acm_sp [label="ACM Cluster SP" fillcolor="#4169E1" color="#2850A8" fontcolor="white"]
+        nats [label="NATS" fillcolor="#E0E0E0" color="#999" fontcolor="#151515"]
+        bridge [label="Bridge\n(auto-enrollment)" fillcolor="#7B68EE" color="#5B48CE" fontcolor="white"]
+        cost_sp [label="koku-cost-provider\n(this project)" fillcolor="#228B22" color="#1A6B1A" fontcolor="white"]
+    }
+
+    // --- Koku ---
+    subgraph cluster_koku {
+        label=<<b>Koku (Cost Management)</b>>
+        fontsize=10 fontcolor="#151515"
+        style="rounded,filled" color="#228B22" fillcolor="#F0FFF0" penwidth=1.5
+        margin=12
+
+        koku_api [label="Sources + Cost Models\n+ Reports API" fillcolor="#2E8B57" color="#1A6B1A" fontcolor="white"]
+        koku_pipe [label="Metering Pipeline" fillcolor="#2E8B57" color="#1A6B1A" fontcolor="white"]
+
+        koku_api -> koku_pipe [style=invis]
+    }
+
+    // --- Clusters ---
+    subgraph cluster_infra {
+        label=<<b>Provisioned Clusters</b>>
+        fontsize=10 fontcolor="#151515"
+        style="rounded,filled" color="#B8860B" fillcolor="#FFFFF0" penwidth=1.5
+        margin=12
+
+        clusters [label="Cluster A  ·  Cluster B  ·  …" fillcolor="#DAA520" color="#B8860B" fontcolor="white"]
+    }
+
+    // --- Flow ---
+    tenant -> catalog [xlabel="order cluster" color="#CC0000" fontcolor="#CC0000"]
+    operator_node -> catalog [xlabel="configure" color="#CC0000" fontcolor="#CC0000" style=dashed]
+    catalog -> acm_sp [color="#CC0000"]
+    acm_sp -> nats [xlabel="READY event" color="#999" fontcolor="#555" style=dashed]
+    nats -> bridge [color="#6644AA"]
+    bridge -> catalog [xlabel="create cost\ninstance" color="#CC0000" fontcolor="#CC0000"]
+    catalog -> cost_sp [color="#228B22"]
+
+    // cost SP ↔ Koku
+    { rank=same; cost_sp; koku_api; }
+    cost_sp -> koku_api [xlabel="REST API" color="#228B22" fontcolor="#228B22" penwidth=2 arrowsize=1.0]
+
+    // Clusters → Koku
+    { rank=same; koku_pipe; clusters; }
+    clusters -> koku_pipe [xlabel="metrics uploads" style=dashed color="#228B22" fontcolor="#228B22" penwidth=2 arrowsize=1.0]
+}
