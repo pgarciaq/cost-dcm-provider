@@ -20,7 +20,7 @@ def png_dimensions(path):
 
 img_w, img_h = png_dimensions(ARCH_IMG)
 CONTENT_WIDTH_EMU = 5943600  # 6.5 inches
-scale = CONTENT_WIDTH_EMU / (img_w * 9525)  # 9525 EMU per pixel at 96 DPI
+scale = CONTENT_WIDTH_EMU / (img_w * 9525) * 0.85  # 85% of content width to fit caption on same page
 cx = int(img_w * 9525 * scale)
 cy = int(img_h * 9525 * scale)
 
