@@ -1,0 +1,624 @@
+openapi: 3.0.4
+info:
+  title: Koku Cost Service Provider API
+  description: |
+    Service provider API for managing cost visibility instances backed by
+    Red Hat Lightspeed Cost Management (Project Koku).
+
+    This API is part of the Distributed Cloud Management (DCM) project and provides
+    metering, cost model, and chargeback capabilities for OpenShift clusters.
+
+    ## DCM Registration Metadata
+    - **Name:** koku-cost-provider
+    - **ServiceType:** cost
+    - **Operations:** CREATE, DELETE, READ
+  version: 1.0.0
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+  contact:
+    name: DCM Project
+    url: https://github.com/dcm-project
+
+servers:
+  - url: /
+    description: Root
+
+tags:
+  - name: Instances
+    description: Cost instance lifecycle operations
+  - name: Usage
+    description: Usage data proxy (Koku reports)
+  - name: CostReports
+    description: Cost report proxy (Koku reports)
+  - name: Health
+    description: Health check operations
+
+paths:
+  /api/v1alpha1/instances:
+    post:
+      operationId: createInstance
+      summary: Create a new cost instance
+      description: |
+        Creates a cost visibility instance for an OpenShift cluster. The SP
+        registers a Koku source (and optionally a cost model) for the target
+        cluster. Creation is asynchronous; this endpoint returns immediately
+        with PROVISIONING status. The instance transitions to READY once Koku
+        receives its first metering data.
+      tags:
+        - Instances
+      parameters:
+        - name: id
+          in: query
+          description: >-
+            Client-assigned resource identifier (AEP-133). If omitted,
+            the server generates a UUID.
+          required: false
+          schema:
+            type: string
+            pattern: '^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CostInstance'
+      responses:
+        '201':
+          description: Cost instance creation initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostInstance'
+        '400':
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Instance already exists for this target
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Target cluster not ready or not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      operationId: listInstances
+      summary: List all cost instances
+      description: Returns a paginated list of all cost instances managed by this service provider.
+      tags:
+        - Instances
+      parameters:
+        - name: page_token
+          in: query
+          description: Token for fetching the next page of results
+          required: false
+          schema:
+            type: string
+        - name: max_page_size
+          in: query
+          description: Maximum number of results to return per page
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: List of cost instances
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostInstanceList'
+        '400':
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1alpha1/instances/{instanceId}:
+    get:
+      operationId: getInstance
+      summary: Get cost instance details
+      description: Returns the details of a specific cost instance including its current status.
+      tags:
+        - Instances
+      parameters:
+        - $ref: '#/components/parameters/InstanceIdPath'
+      responses:
+        '200':
+          description: Cost instance details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostInstance'
+        '404':
+          description: Instance not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      operationId: deleteInstance
+      summary: Delete a cost instance
+      description: |
+        Pauses the Koku source and removes the cost model (if any). Metering
+        history is preserved. The metrics operator is NOT removed (it is
+        cluster-scoped and may serve other consumers).
+      tags:
+        - Instances
+      parameters:
+        - $ref: '#/components/parameters/InstanceIdPath'
+      responses:
+        '204':
+          description: Cost instance deletion initiated
+        '404':
+          description: Instance not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1alpha1/instances/{instanceId}/usage/{metric}:
+    get:
+      operationId: getUsage
+      summary: Get usage data for a cost instance
+      description: |
+        Proxies usage queries to Koku, translating the DCM instance ID to
+        the appropriate cluster filter.
+      tags:
+        - Usage
+      parameters:
+        - $ref: '#/components/parameters/InstanceIdPath'
+        - name: metric
+          in: path
+          required: true
+          description: "Usage metric to query"
+          schema:
+            type: string
+            enum:
+              - compute
+              - memory
+              - storage
+        - name: start_date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Usage data from Koku
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '404':
+          description: Instance not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '502':
+          description: Koku upstream error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1alpha1/instances/{instanceId}/cost-reports:
+    get:
+      operationId: getCostReport
+      summary: Get cost report for a cost instance
+      description: |
+        Proxies cost report queries to Koku, translating the DCM instance
+        ID to the appropriate cluster filter.
+      tags:
+        - CostReports
+      parameters:
+        - $ref: '#/components/parameters/InstanceIdPath'
+        - name: start_date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Cost report data from Koku
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '404':
+          description: Instance not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '502':
+          description: Koku upstream error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1alpha1/instances/{instanceId}/cost-reports/forecast:
+    get:
+      operationId: getCostForecast
+      summary: Get cost forecast for a cost instance
+      description: |
+        Proxies cost forecast queries to Koku.
+      tags:
+        - CostReports
+      parameters:
+        - $ref: '#/components/parameters/InstanceIdPath'
+      responses:
+        '200':
+          description: Cost forecast data from Koku
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '404':
+          description: Instance not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '502':
+          description: Koku upstream error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1alpha1/instances/health:
+    get:
+      operationId: getHealth
+      summary: Health check
+      description: Returns the health status of the service provider.
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Health status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+
+components:
+  parameters:
+    InstanceIdPath:
+      name: instanceId
+      in: path
+      required: true
+      description: DCM-level cost instance resource identifier
+      schema:
+        type: string
+        pattern: '^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$'
+
+  schemas:
+    CostInstance:
+      type: object
+      description: A cost visibility instance backed by Koku
+      x-aep-resource:
+        singular: instance
+        plural: instances
+        type: koku-cost-provider.dcm.io/instance
+        patterns:
+          - instances/{instance}
+      required:
+        - spec
+      properties:
+        id:
+          type: string
+          pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+          description: DCM-level resource identifier.
+          readOnly: true
+        path:
+          type: string
+          description: Resource path
+          readOnly: true
+        spec:
+          $ref: '#/components/schemas/CostSpec'
+        status:
+          type: string
+          description: Current status
+          enum:
+            - PROVISIONING
+            - READY
+            - ERROR
+            - DELETING
+            - DELETED
+          readOnly: true
+        status_message:
+          type: string
+          description: Human-readable status message
+          readOnly: true
+        cluster_id:
+          type: string
+          description: Resolved OpenShift cluster ID (from ClusterVersion)
+          readOnly: true
+        create_time:
+          type: string
+          format: date-time
+          description: Creation timestamp
+          readOnly: true
+        update_time:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          readOnly: true
+
+    CostSpec:
+      type: object
+      description: Cost instance specification
+      required:
+        - service_type
+        - metadata
+        - target
+      properties:
+        service_type:
+          type: string
+          description: Must be "cost"
+          enum:
+            - cost
+        metadata:
+          $ref: '#/components/schemas/CostMetadata'
+        target:
+          $ref: '#/components/schemas/CostTarget'
+        cost_model:
+          $ref: '#/components/schemas/CostModelSpec'
+        currency:
+          type: string
+          description: ISO 4217 currency code
+          default: USD
+          pattern: '^[A-Z]{3}$'
+
+    CostMetadata:
+      type: object
+      description: Resource metadata
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Human-readable name
+          pattern: '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'
+          minLength: 1
+          maxLength: 63
+        labels:
+          type: object
+          description: Key-value labels
+          additionalProperties:
+            type: string
+
+    CostTarget:
+      type: object
+      description: Reference to the target resource
+      required:
+        - resource_id
+      properties:
+        resource_id:
+          type: string
+          description: DCM cluster instance ID
+        resource_type:
+          type: string
+          description: Target resource type
+          default: cluster
+
+    CostModelSpec:
+      type: object
+      description: Cost model configuration
+      properties:
+        rates:
+          type: array
+          description: Rate definitions (omit for Tier 2 distribution-only)
+          items:
+            $ref: '#/components/schemas/Rate'
+        markup:
+          $ref: '#/components/schemas/Markup'
+        distribution:
+          type: string
+          description: Overhead distribution strategy
+          enum:
+            - cpu
+            - memory
+          default: cpu
+
+    Rate:
+      type: object
+      description: A single cost rate
+      required:
+        - metric
+        - value
+      properties:
+        metric:
+          type: string
+          description: Koku-compatible metric name
+          enum:
+            - cpu_core_usage_per_hour
+            - cpu_core_request_per_hour
+            - memory_gb_usage_per_hour
+            - memory_gb_request_per_hour
+            - storage_gb_usage_per_month
+            - storage_gb_request_per_month
+            - node_cost_per_month
+            - cluster_cost_per_month
+            - pvc_cost_per_month
+        cost_type:
+          type: string
+          description: Cost classification
+          enum:
+            - Infrastructure
+            - Supplementary
+          default: Infrastructure
+        value:
+          type: number
+          format: double
+          description: Rate value
+          minimum: 0
+
+    Markup:
+      type: object
+      description: Markup percentage
+      required:
+        - value
+        - unit
+      properties:
+        value:
+          type: number
+          format: double
+          description: Markup value
+          minimum: 0
+        unit:
+          type: string
+          enum:
+            - percent
+
+    CostInstanceList:
+      type: object
+      description: Paginated list of cost instances
+      properties:
+        instances:
+          type: array
+          items:
+            $ref: '#/components/schemas/CostInstance'
+        next_page_token:
+          type: string
+          description: Token for next page
+
+    Health:
+      type: object
+      description: Health status singleton
+      x-aep-resource:
+        singular: health
+        plural: healths
+        singleton: true
+        type: koku-cost-provider.dcm.io/health
+        patterns:
+          - health
+      required:
+        - type
+        - status
+        - path
+        - version
+        - uptime
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          readOnly: true
+        status:
+          type: string
+          readOnly: true
+        path:
+          type: string
+          readOnly: true
+        version:
+          type: string
+          readOnly: true
+        uptime:
+          type: integer
+          readOnly: true
+
+    Error:
+      type: object
+      description: RFC 7807 compliant error response
+      required:
+        - type
+        - title
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          enum:
+            - INVALID_ARGUMENT
+            - NOT_FOUND
+            - ALREADY_EXISTS
+            - PERMISSION_DENIED
+            - UNAUTHENTICATED
+            - INTERNAL
+            - UNAVAILABLE
+            - UNPROCESSABLE_ENTITY
+            - BAD_GATEWAY
+        title:
+          type: string
+        status:
+          type: integer
+          format: int32
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
