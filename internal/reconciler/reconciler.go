@@ -1,3 +1,5 @@
+// Package reconciler polls provisioning instances and transitions them to
+// READY once Koku reports metering data, or to ERROR on timeout.
 package reconciler
 
 import (

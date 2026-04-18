@@ -1,3 +1,4 @@
+// Package health provides a cached health checker that probes the Koku API.
 package health
 
 import (
@@ -15,8 +16,8 @@ type Checker struct {
 	kokuURL   string
 	cacheTTL  time.Duration
 
-	mu          sync.RWMutex
-	cachedAt    time.Time
+	mu           sync.RWMutex
+	cachedAt     time.Time
 	cachedKokuOK bool
 }
 
@@ -80,6 +81,6 @@ func (c *Checker) probeKoku() bool {
 	if err != nil {
 		return false
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // best-effort health probe
 	return resp.StatusCode < 500
 }

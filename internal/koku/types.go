@@ -30,18 +30,18 @@ type SourceResponse struct {
 
 // CostModelRequest is the payload for POST /api/cost-management/v1/cost-models/.
 type CostModelRequest struct {
-	Name         string             `json:"name"`
-	Description  string             `json:"description"`
-	SourceType   string             `json:"source_type"`
-	SourceUUIDs  []string           `json:"source_uuids"`
-	Rates        []CostModelRate    `json:"rates"`
-	Markup       *CostModelMarkup   `json:"markup,omitempty"`
-	Distribution string             `json:"distribution,omitempty"`
+	Name         string           `json:"name"`
+	Description  string           `json:"description"`
+	SourceType   string           `json:"source_type"`
+	SourceUUIDs  []string         `json:"source_uuids"`
+	Rates        []CostModelRate  `json:"rates"`
+	Markup       *CostModelMarkup `json:"markup,omitempty"`
+	Distribution string           `json:"distribution,omitempty"`
 }
 
 type CostModelRate struct {
-	Metric      CostModelMetric     `json:"metric"`
-	CostType    string              `json:"cost_type"`
+	Metric      CostModelMetric       `json:"metric"`
+	CostType    string                `json:"cost_type"`
 	TieredRates []CostModelTieredRate `json:"tiered_rates"`
 }
 

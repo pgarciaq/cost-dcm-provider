@@ -1,3 +1,5 @@
+// Package config loads and validates environment-based configuration
+// for the koku-cost-provider service.
 package config
 
 import (

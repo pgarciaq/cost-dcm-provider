@@ -58,7 +58,7 @@ func TestPauseSource(t *testing.T) {
 }
 
 func TestCreateCostModel(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusCreated)
 		_ = json.NewEncoder(w).Encode(CostModelResponse{UUID: "cm-uuid-456"})
 	}))

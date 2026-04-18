@@ -1,3 +1,5 @@
+// Package handler implements the DCM service provider contract for cost
+// management: create, get, list, delete instances, and proxy usage/cost queries.
 package handler
 
 import (
@@ -85,7 +87,12 @@ func (h *Handler) CreateInstance(ctx context.Context, req oapigen.CreateInstance
 	}
 
 	name := spec.Metadata.Name
-	specJSON, _ := json.Marshal(spec)
+	specJSON, err := json.Marshal(spec)
+	if err != nil {
+		return oapigen.CreateInstance500ApplicationProblemPlusJSONResponse( //nolint:nilerr // error mapped to HTTP 500 response
+			errResp(oapigen.INTERNAL, 500, "Internal Server Error", "failed to serialize spec"),
+		), nil
+	}
 
 	// For now use the target resource_id as cluster_id; in production this
 	// would be resolved via ACM kubeconfig + ClusterVersion API.
@@ -208,7 +215,7 @@ func (h *Handler) ListInstances(_ context.Context, req oapigen.ListInstancesRequ
 
 	instances, total, err := h.store.List(pageSize, offset)
 	if err != nil {
-		return oapigen.ListInstances500ApplicationProblemPlusJSONResponse(
+		return oapigen.ListInstances500ApplicationProblemPlusJSONResponse( //nolint:nilerr // error mapped to HTTP 500 response
 			errResp(oapigen.INTERNAL, 500, "Internal Server Error", "failed to list instances"),
 		), nil
 	}

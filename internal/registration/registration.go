@@ -1,3 +1,5 @@
+// Package registration handles self-registration of the cost service provider
+// with the DCM Service Provider Manager.
 package registration
 
 import (

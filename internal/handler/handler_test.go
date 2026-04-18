@@ -3,10 +3,13 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	oapigen "github.com/dcm-project/koku-cost-provider/internal/api/server"
 	"github.com/dcm-project/koku-cost-provider/internal/health"
@@ -14,10 +17,6 @@ import (
 	"github.com/dcm-project/koku-cost-provider/internal/monitoring"
 	"github.com/dcm-project/koku-cost-provider/internal/store"
 	"github.com/dcm-project/koku-cost-provider/internal/util"
-
-	"log/slog"
-	"os"
-	"time"
 )
 
 func setupHandler(t *testing.T) (*Handler, *httptest.Server) {

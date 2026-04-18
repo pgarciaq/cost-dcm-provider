@@ -1,3 +1,5 @@
+// Package monitoring provides CloudEvent publishing over NATS for instance
+// status updates.
 package monitoring
 
 import (

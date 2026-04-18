@@ -1,3 +1,5 @@
+// Package apiserver provides the HTTP server, middleware, and error handling
+// for the koku-cost-provider service.
 package apiserver
 
 import (
@@ -24,8 +26,10 @@ type Server struct {
 	onReady func(context.Context)
 }
 
-const readinessProbeTimeout = 5 * time.Second
-const readinessProbeInterval = 50 * time.Millisecond
+const (
+	readinessProbeTimeout  = 5 * time.Second
+	readinessProbeInterval = 50 * time.Millisecond
+)
 
 func New(cfg *config.Config, logger *slog.Logger, handler oapigen.ServerInterface) *Server {
 	badReq := newBadRequestHandler(logger)

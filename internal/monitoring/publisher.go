@@ -63,4 +63,4 @@ func (p *NATSPublisher) Close() error {
 type NoopPublisher struct{}
 
 func (NoopPublisher) Publish(context.Context, string, string, string) error { return nil }
-func (NoopPublisher) Close() error                                         { return nil }
+func (NoopPublisher) Close() error                                          { return nil }

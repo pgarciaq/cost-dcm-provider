@@ -1,3 +1,4 @@
+// Package util provides small generic helpers.
 package util
 
 // Ptr returns a pointer to the given value.

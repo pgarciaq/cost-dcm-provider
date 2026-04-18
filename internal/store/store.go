@@ -1,3 +1,4 @@
+// Package store provides SQLite-backed persistence for cost instances.
 package store
 
 import (

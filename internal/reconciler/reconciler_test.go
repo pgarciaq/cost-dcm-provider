@@ -3,17 +3,16 @@ package reconciler
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/dcm-project/koku-cost-provider/internal/koku"
 	"github.com/dcm-project/koku-cost-provider/internal/store"
-
-	"log/slog"
-	"os"
 )
 
 func newTestStore(t *testing.T) *store.Store {
@@ -26,7 +25,7 @@ func newTestStore(t *testing.T) *store.Store {
 }
 
 func TestReconcileTransitionsToReady(t *testing.T) {
-	kokuSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	kokuSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		// Return non-empty stats to indicate data received
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(map[string]any{

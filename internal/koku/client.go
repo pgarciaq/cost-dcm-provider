@@ -1,3 +1,5 @@
+// Package koku provides a client for the Koku (Red Hat Lightspeed Cost
+// Management) REST API: sources, cost models, reports, and forecasts.
 package koku
 
 import (
@@ -47,7 +49,7 @@ func (c *Client) do(method, path string, body any) (*http.Response, error) {
 }
 
 func decodeJSON[T any](resp *http.Response) (*T, error) {
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // response body
 	var v T
 	if err := json.NewDecoder(resp.Body).Decode(&v); err != nil {
 		return nil, fmt.Errorf("decoding response: %w", err)
@@ -69,7 +71,7 @@ func (c *Client) CreateSource(clusterID, name string) (*SourceResponse, error) {
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusCreated {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck // error path
 		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("create source failed: status %d: %s", resp.StatusCode, truncate(body))
 	}
@@ -81,7 +83,7 @@ func (c *Client) PauseSource(uuid string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // response body
 	if resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("pause source failed: status %d: %s", resp.StatusCode, truncate(body))
@@ -104,7 +106,7 @@ func (c *Client) CreateCostModel(name string, sourceUUID string, rates []CostMod
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusCreated {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck // error path
 		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("create cost model failed: status %d: %s", resp.StatusCode, truncate(body))
 	}
@@ -116,7 +118,7 @@ func (c *Client) DeleteCostModel(uuid string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // response body
 	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("delete cost model failed: status %d: %s", resp.StatusCode, truncate(body))
@@ -130,7 +132,7 @@ func (c *Client) GetSourceStats(uuid string) (SourceStatsResponse, error) {
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck // error path
 		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("get source stats failed: status %d: %s", resp.StatusCode, truncate(body))
 	}
@@ -154,7 +156,7 @@ func (c *Client) GetReports(clusterID, reportType string, params url.Values) (js
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // response body
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("get reports failed: status %d: %s", resp.StatusCode, truncate(body))
@@ -174,7 +176,7 @@ func (c *Client) GetForecasts(clusterID string, params url.Values) (json.RawMess
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // response body
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("get forecasts failed: status %d: %s", resp.StatusCode, truncate(body))
