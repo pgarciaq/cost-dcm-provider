@@ -1,9 +1,11 @@
-# Metering and Cost Management for Sovereign Clouds
+# Metering and Cost Management for Sovereign Clouds — DRAFT
 
 **How datacenter and sovereign cloud providers can monetize infrastructure services
 without compromising data sovereignty**
 
 *A Red Hat White Paper*
+
+> **DRAFT** — This document is a work in progress and has not been formally reviewed or approved.
 
 ---
 

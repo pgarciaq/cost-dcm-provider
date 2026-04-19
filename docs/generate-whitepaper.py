@@ -515,6 +515,44 @@ footer2 = footer2.replace("Red Hat Enterprise Linux, the Red Hat logo, and JBoss
                           "the Red Hat logo, OpenShift, and Ansible are")
 footer2_path.write_text(footer2)
 
+# Add diagonal "DRAFT" watermark to default header (appears on every page)
+header1_path = WORK / "word" / "header1.xml"
+header1 = header1_path.read_text()
+draft_watermark = (
+    '<w:p><w:r><w:pict>'
+    '<v:shapetype id="_x0000_t136" coordsize="21600,21600"'
+    ' o:spt="136" adj="10800" path="m@7,l@8,m@5,21600l@6,21600e">'
+    '<v:formulas><v:f eqn="sum #0 0 10800"/><v:f eqn="prod #0 2 1"/>'
+    '<v:f eqn="sum 21600 0 @1"/><v:f eqn="sum 0 0 @2"/>'
+    '<v:f eqn="sum 21600 0 @3"/><v:f eqn="if @0 @3 0"/>'
+    '<v:f eqn="if @0 21600 @1"/><v:f eqn="if @0 0 @2"/>'
+    '<v:f eqn="if @0 @4 21600"/><v:f eqn="mid @5 @6"/>'
+    '<v:f eqn="mid @8 @5"/><v:f eqn="mid @7 @8"/>'
+    '<v:f eqn="mid @6 @7"/><v:f eqn="sum @6 0 @5"/>'
+    '</v:formulas><v:path textpathok="t" o:connecttype="custom"'
+    ' o:connectlocs="@9,0;@10,10800;@11,21600;@12,10800"'
+    ' o:connectangles="270,180,90,0"/>'
+    '<v:textpath on="t" fitshape="t"/>'
+    '<v:handles><v:h position="#0,bottomRight" xrange="6629,14971"/>'
+    '</v:handles><o:lock v:ext="edit" text="t" shapetype="t"/>'
+    '</v:shapetype>'
+    '<v:shape id="DraftWatermark" o:spid="_x0000_s2049"'
+    ' type="#_x0000_t136"'
+    ' style="position:absolute;margin-left:0;margin-top:0;'
+    'width:450pt;height:150pt;rotation:-45;z-index:-251657216;'
+    'mso-position-horizontal:center;mso-position-horizontal-relative:page;'
+    'mso-position-vertical:center;mso-position-vertical-relative:page"'
+    ' o:allowincell="f" fillcolor="red" stroked="f">'
+    '<v:fill opacity=".25"/>'
+    '<v:textpath style="font-family:&quot;Red Hat Display&quot;;'
+    'font-size:72pt;font-weight:bold" string="DRAFT"/>'
+    '<w10:wrap anchorx="page" anchory="page"/>'
+    '</v:shape>'
+    '</w:pict></w:r></w:p>'
+)
+header1 = header1.replace("</w:hdr>", f"{draft_watermark}\n</w:hdr>")
+header1_path.write_text(header1)
+
 # Repack into DOCX
 if OUTPUT.exists():
     OUTPUT.unlink()
