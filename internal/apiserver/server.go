@@ -14,6 +14,7 @@ import (
 	v1alpha1 "github.com/dcm-project/koku-cost-provider/api/v1alpha1"
 	oapigen "github.com/dcm-project/koku-cost-provider/internal/api/server"
 	"github.com/dcm-project/koku-cost-provider/internal/config"
+	"github.com/dcm-project/koku-cost-provider/internal/metrics"
 	"github.com/getkin/kin-openapi/openapi3"
 	legacyrouter "github.com/getkin/kin-openapi/routers/legacy"
 	"github.com/go-chi/chi/v5"
@@ -37,6 +38,7 @@ func New(cfg *config.Config, logger *slog.Logger, handler oapigen.ServerInterfac
 
 	r := chi.NewRouter()
 	r.Use(rfc7807RecoveryMiddleware(logger))
+	r.Use(metrics.Middleware)
 	r.Use(requestLoggingMiddleware(logger))
 	if cfg.Server.MaxBodySize > 0 {
 		r.Use(bodySizeLimitMiddleware(cfg.Server.MaxBodySize))

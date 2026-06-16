@@ -7,8 +7,9 @@ RUN go mod download
 
 COPY . .
 
+ARG VERSION=0.0.1-dev
 USER root
-RUN CGO_ENABLED=0 GOOS=linux go build -buildvcs=false -ldflags "-X main.version=$(cat VERSION 2>/dev/null || echo 0.0.1)" -o koku-cost-provider ./cmd/koku-cost-provider
+RUN CGO_ENABLED=0 GOOS=linux go build -buildvcs=false -ldflags "-X main.version=${VERSION}" -o koku-cost-provider ./cmd/koku-cost-provider
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 

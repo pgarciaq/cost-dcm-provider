@@ -121,16 +121,37 @@ func TestList(t *testing.T) {
 	}
 }
 
-func TestDelete(t *testing.T) {
+func TestSoftDelete(t *testing.T) {
 	s := tempDB(t)
 	_ = s.Create(&CostInstance{ID: "a", TargetResourceID: "c1", Status: "READY"})
 
-	if err := s.Delete("a"); err != nil {
-		t.Fatalf("delete: %v", err)
+	if err := s.UpdateStatus("a", "DELETED", "instance deleted"); err != nil {
+		t.Fatalf("soft delete: %v", err)
 	}
-	_, err := s.Get("a")
+	inst, err := s.Get("a")
+	if err != nil {
+		t.Fatalf("expected instance to still exist after soft delete: %v", err)
+	}
+	if inst.Status != "DELETED" {
+		t.Errorf("expected status DELETED, got %s", inst.Status)
+	}
+}
+
+func TestGetByTarget(t *testing.T) {
+	s := tempDB(t)
+	_ = s.Create(&CostInstance{ID: "x", TargetResourceID: "target-1", Status: "READY"})
+
+	inst, err := s.GetByTarget("target-1")
+	if err != nil {
+		t.Fatalf("GetByTarget: %v", err)
+	}
+	if inst.ID != "x" {
+		t.Errorf("expected ID 'x', got %s", inst.ID)
+	}
+
+	_, err = s.GetByTarget("nonexistent")
 	if err != ErrNotFound {
-		t.Fatalf("expected ErrNotFound after delete, got %v", err)
+		t.Errorf("expected ErrNotFound, got %v", err)
 	}
 }
 

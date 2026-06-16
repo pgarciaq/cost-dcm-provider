@@ -31,13 +31,14 @@ type RegistrationConfig struct {
 }
 
 type KokuConfig struct {
-	APIURL       string `env:"KOKU_API_URL,required"`
-	Identity     string `env:"KOKU_IDENTITY"          envDefault:""`
-	IdentityFile string `env:"KOKU_IDENTITY_FILE"     envDefault:""`
+	APIURL        string `env:"KOKU_API_URL,required"`
+	Identity      string `env:"KOKU_IDENTITY"          envDefault:""`
+	IdentityFile  string `env:"KOKU_IDENTITY_FILE"     envDefault:""`
+	AllowInsecure bool   `env:"KOKU_ALLOW_INSECURE"    envDefault:"false"`
 }
 
 type NATSConfig struct {
-	URL string `env:"SP_NATS_URL,required"`
+	URL string `env:"SP_NATS_URL" envDefault:""`
 }
 
 type StoreConfig struct {
@@ -68,6 +69,10 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	if err := validateKokuURL(&cfg.Koku); err != nil {
+		return nil, err
+	}
+
 	return cfg, nil
 }
 
@@ -83,6 +88,16 @@ func resolveKokuIdentity(koku *KokuConfig) error {
 	}
 	if koku.Identity == "" {
 		return fmt.Errorf("one of KOKU_IDENTITY or KOKU_IDENTITY_FILE must be set")
+	}
+	return nil
+}
+
+func validateKokuURL(koku *KokuConfig) error {
+	if !koku.AllowInsecure && !strings.HasPrefix(koku.APIURL, "https://") {
+		if strings.HasPrefix(koku.APIURL, "http://localhost") || strings.HasPrefix(koku.APIURL, "http://127.0.0.1") {
+			return nil
+		}
+		return fmt.Errorf("KOKU_API_URL must use HTTPS (got %q); set KOKU_ALLOW_INSECURE=true to override", koku.APIURL)
 	}
 	return nil
 }

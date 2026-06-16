@@ -72,12 +72,21 @@ func run(logger *slog.Logger) error {
 	// Koku client
 	kokuClient := koku.NewClient(cfg.Koku.APIURL, cfg.Koku.Identity)
 
-	// NATS publisher
-	publisher, err := monitoring.NewNATSPublisher(cfg.NATS.URL, cfg.Registration.ProviderName, logger)
-	if err != nil {
-		return fmt.Errorf("creating NATS publisher: %w", err)
+	// NATS publisher — fall back to noop if NATS is unavailable
+	var publisher monitoring.StatusPublisher
+	if cfg.NATS.URL != "" {
+		p, natsErr := monitoring.NewNATSPublisher(cfg.NATS.URL, cfg.Registration.ProviderName, logger)
+		if natsErr != nil {
+			logger.Warn("NATS connection failed, falling back to NoopPublisher", "error", natsErr)
+			publisher = monitoring.NoopPublisher{}
+		} else {
+			publisher = p
+			defer func() { _ = p.Close() }()
+		}
+	} else {
+		logger.Info("SP_NATS_URL not set, using NoopPublisher")
+		publisher = monitoring.NoopPublisher{}
 	}
-	defer func() { _ = publisher.Close() }()
 
 	// DCM registration client
 	dcmClient, err := spmclient.NewClientWithResponses(cfg.Registration.DCMURL)

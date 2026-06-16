@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"net/url"
 
@@ -13,19 +14,19 @@ type InstanceStore interface {
 	Create(inst *store.CostInstance) error
 	Update(inst *store.CostInstance) error
 	Get(id string) (*store.CostInstance, error)
+	GetByTarget(targetResourceID string) (*store.CostInstance, error)
 	List(limit, offset int) ([]store.CostInstance, int64, error)
 	UpdateStatus(id, status, message string) error
-	Delete(id string) error
 	ListByStatus(status string) ([]store.CostInstance, error)
 }
 
 // KokuClient abstracts the Koku REST API interactions.
 type KokuClient interface {
-	CreateSource(clusterID, name string) (*koku.SourceResponse, error)
-	PauseSource(uuid string) error
-	CreateCostModel(name, sourceUUID string, rates []koku.CostModelRate, markup *koku.CostModelMarkup, distribution string) (*koku.CostModelResponse, error)
-	DeleteCostModel(uuid string) error
-	GetSourceStats(uuid string) (koku.SourceStatsResponse, error)
-	GetReports(clusterID, reportType string, params url.Values) (json.RawMessage, error)
-	GetForecasts(clusterID string, params url.Values) (json.RawMessage, error)
+	CreateSource(ctx context.Context, clusterID, name string) (*koku.SourceResponse, error)
+	PauseSource(ctx context.Context, uuid string) error
+	CreateCostModel(ctx context.Context, name, sourceUUID string, rates []koku.CostModelRate, markup *koku.CostModelMarkup, distribution string) (*koku.CostModelResponse, error)
+	DeleteCostModel(ctx context.Context, uuid string) error
+	GetSourceStats(ctx context.Context, uuid string) (koku.SourceStatsResponse, error)
+	GetReports(ctx context.Context, clusterID, reportType string, params url.Values) (json.RawMessage, error)
+	GetForecasts(ctx context.Context, clusterID string, params url.Values) (json.RawMessage, error)
 }

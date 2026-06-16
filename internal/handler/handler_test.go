@@ -337,3 +337,174 @@ func TestGetHealth(t *testing.T) {
 		t.Errorf("expected version 'test'")
 	}
 }
+
+func TestCreateWithInvalidCurrency(t *testing.T) {
+	h, ts := setupHandler(t)
+	defer ts.Close()
+
+	ctx := context.Background()
+	id := "currency-test"
+	badCurrency := "DOGECOIN"
+	body := oapigen.CostInstance{
+		Spec: oapigen.CostSpec{
+			ServiceType: "cost",
+			Metadata:    oapigen.CostMetadata{Name: "c"},
+			Target:      oapigen.CostTarget{ResourceId: "cluster-currency"},
+			Currency:    &badCurrency,
+			CostModel: &oapigen.CostModelSpec{
+				Rates: &[]oapigen.Rate{
+					{Metric: "cpu_core_usage_per_hour", Value: 0.05},
+				},
+			},
+		},
+	}
+
+	resp, _ := h.CreateInstance(ctx, oapigen.CreateInstanceRequestObject{
+		Params: oapigen.CreateInstanceParams{Id: &id},
+		Body:   &body,
+	})
+	if _, ok := resp.(oapigen.CreateInstance400ApplicationProblemPlusJSONResponse); !ok {
+		t.Fatalf("expected 400 for invalid currency, got %T", resp)
+	}
+}
+
+func TestCreateWithValidCurrency(t *testing.T) {
+	h, ts := setupHandler(t)
+	defer ts.Close()
+
+	ctx := context.Background()
+	id := "eur-test"
+	eur := "EUR"
+	body := oapigen.CostInstance{
+		Spec: oapigen.CostSpec{
+			ServiceType: "cost",
+			Metadata:    oapigen.CostMetadata{Name: "c"},
+			Target:      oapigen.CostTarget{ResourceId: "cluster-eur"},
+			Currency:    &eur,
+			CostModel: &oapigen.CostModelSpec{
+				Rates: &[]oapigen.Rate{
+					{Metric: "cpu_core_usage_per_hour", Value: 0.05},
+				},
+			},
+		},
+	}
+
+	resp, _ := h.CreateInstance(ctx, oapigen.CreateInstanceRequestObject{
+		Params: oapigen.CreateInstanceParams{Id: &id},
+		Body:   &body,
+	})
+	if _, ok := resp.(oapigen.CreateInstance201JSONResponse); !ok {
+		t.Fatalf("expected 201 for valid currency EUR, got %T", resp)
+	}
+}
+
+func TestRetryAfterError(t *testing.T) {
+	h, ts := setupHandler(t)
+	defer ts.Close()
+
+	ctx := context.Background()
+	body := oapigen.CostInstance{
+		Spec: oapigen.CostSpec{
+			ServiceType: "cost",
+			Metadata:    oapigen.CostMetadata{Name: "retry-me"},
+			Target:      oapigen.CostTarget{ResourceId: "cluster-retry"},
+		},
+	}
+
+	id1 := "first-attempt"
+	resp1, _ := h.CreateInstance(ctx, oapigen.CreateInstanceRequestObject{
+		Params: oapigen.CreateInstanceParams{Id: &id1},
+		Body:   &body,
+	})
+	if _, ok := resp1.(oapigen.CreateInstance201JSONResponse); !ok {
+		t.Fatalf("first create: expected 201, got %T", resp1)
+	}
+
+	// Simulate failure by marking it ERROR
+	h.store.UpdateStatus("first-attempt", "ERROR", "simulated failure")
+
+	// Retry with a different ID for the same target should succeed
+	id2 := "second-attempt"
+	resp2, _ := h.CreateInstance(ctx, oapigen.CreateInstanceRequestObject{
+		Params: oapigen.CreateInstanceParams{Id: &id2},
+		Body:   &body,
+	})
+	created, ok := resp2.(oapigen.CreateInstance201JSONResponse)
+	if !ok {
+		t.Fatalf("retry after ERROR: expected 201, got %T", resp2)
+	}
+	// Should reuse the original row's ID, not the new requested ID
+	if *created.Id != "first-attempt" {
+		t.Errorf("expected reused ID 'first-attempt', got %s", *created.Id)
+	}
+	if *created.Status != "PROVISIONING" {
+		t.Errorf("expected PROVISIONING, got %s", string(*created.Status))
+	}
+}
+
+func TestRetryAfterDeleted(t *testing.T) {
+	h, ts := setupHandler(t)
+	defer ts.Close()
+
+	ctx := context.Background()
+	body := oapigen.CostInstance{
+		Spec: oapigen.CostSpec{
+			ServiceType: "cost",
+			Metadata:    oapigen.CostMetadata{Name: "deleted-retry"},
+			Target:      oapigen.CostTarget{ResourceId: "cluster-deleted-retry"},
+		},
+	}
+
+	id1 := "del-first"
+	_, _ = h.CreateInstance(ctx, oapigen.CreateInstanceRequestObject{
+		Params: oapigen.CreateInstanceParams{Id: &id1},
+		Body:   &body,
+	})
+
+	// Delete it
+	_, _ = h.DeleteInstance(ctx, oapigen.DeleteInstanceRequestObject{InstanceId: "del-first"})
+
+	// Re-create for the same target should succeed
+	id2 := "del-second"
+	resp, _ := h.CreateInstance(ctx, oapigen.CreateInstanceRequestObject{
+		Params: oapigen.CreateInstanceParams{Id: &id2},
+		Body:   &body,
+	})
+	created, ok := resp.(oapigen.CreateInstance201JSONResponse)
+	if !ok {
+		t.Fatalf("retry after DELETED: expected 201, got %T", resp)
+	}
+	if *created.Id != "del-first" {
+		t.Errorf("expected reused ID 'del-first', got %s", *created.Id)
+	}
+}
+
+func TestDuplicateActiveStill409(t *testing.T) {
+	h, ts := setupHandler(t)
+	defer ts.Close()
+
+	ctx := context.Background()
+	body := oapigen.CostInstance{
+		Spec: oapigen.CostSpec{
+			ServiceType: "cost",
+			Metadata:    oapigen.CostMetadata{Name: "active"},
+			Target:      oapigen.CostTarget{ResourceId: "cluster-active-dup"},
+		},
+	}
+
+	id1 := "active-1"
+	_, _ = h.CreateInstance(ctx, oapigen.CreateInstanceRequestObject{
+		Params: oapigen.CreateInstanceParams{Id: &id1},
+		Body:   &body,
+	})
+
+	// Instance is PROVISIONING (active). Retry should 409.
+	id2 := "active-2"
+	resp, _ := h.CreateInstance(ctx, oapigen.CreateInstanceRequestObject{
+		Params: oapigen.CreateInstanceParams{Id: &id2},
+		Body:   &body,
+	})
+	if _, ok := resp.(oapigen.CreateInstance409ApplicationProblemPlusJSONResponse); !ok {
+		t.Fatalf("expected 409 for active instance, got %T", resp)
+	}
+}

@@ -1,6 +1,7 @@
 package koku
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -33,7 +34,7 @@ func TestCreateSource(t *testing.T) {
 	defer ts.Close()
 
 	c := NewClient(ts.URL, "test-identity")
-	src, err := c.CreateSource("cluster-abc", "my-source")
+	src, err := c.CreateSource(context.Background(), "cluster-abc", "my-source")
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -52,7 +53,7 @@ func TestPauseSource(t *testing.T) {
 	defer ts.Close()
 
 	c := NewClient(ts.URL, "test-identity")
-	if err := c.PauseSource("src-uuid"); err != nil {
+	if err := c.PauseSource(context.Background(), "src-uuid"); err != nil {
 		t.Fatalf("PauseSource: %v", err)
 	}
 }
@@ -72,7 +73,7 @@ func TestCreateCostModel(t *testing.T) {
 			TieredRates: []CostModelTieredRate{{Value: 0.05, Unit: "USD"}},
 		},
 	}
-	cm, err := c.CreateCostModel("test-model", "src-uuid", rates, nil, "cpu")
+	cm, err := c.CreateCostModel(context.Background(), "test-model", "src-uuid", rates, nil, "cpu")
 	if err != nil {
 		t.Fatalf("CreateCostModel: %v", err)
 	}
@@ -88,7 +89,7 @@ func TestDeleteCostModel(t *testing.T) {
 	defer ts.Close()
 
 	c := NewClient(ts.URL, "test-identity")
-	if err := c.DeleteCostModel("cm-uuid"); err != nil {
+	if err := c.DeleteCostModel(context.Background(), "cm-uuid"); err != nil {
 		t.Fatalf("DeleteCostModel: %v", err)
 	}
 }
@@ -103,7 +104,7 @@ func TestGetSourceStats(t *testing.T) {
 	defer ts.Close()
 
 	c := NewClient(ts.URL, "test-identity")
-	stats, err := c.GetSourceStats("src-uuid")
+	stats, err := c.GetSourceStats(context.Background(), "src-uuid")
 	if err != nil {
 		t.Fatalf("GetSourceStats: %v", err)
 	}
@@ -123,7 +124,7 @@ func TestGetReports(t *testing.T) {
 	defer ts.Close()
 
 	c := NewClient(ts.URL, "test-identity")
-	data, err := c.GetReports("cluster-id", "compute", nil)
+	data, err := c.GetReports(context.Background(), "cluster-id", "compute", nil)
 	if err != nil {
 		t.Fatalf("GetReports: %v", err)
 	}

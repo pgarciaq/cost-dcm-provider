@@ -11,10 +11,11 @@ import (
 
 // Checker implements the health check for the cost service provider.
 type Checker struct {
-	version   string
-	startTime time.Time
-	kokuURL   string
-	cacheTTL  time.Duration
+	version    string
+	startTime  time.Time
+	kokuURL    string
+	cacheTTL   time.Duration
+	httpClient *http.Client
 
 	mu           sync.RWMutex
 	cachedAt     time.Time
@@ -27,6 +28,9 @@ func NewChecker(version string, startTime time.Time, kokuURL string) *Checker {
 		startTime: startTime,
 		kokuURL:   kokuURL,
 		cacheTTL:  10 * time.Second,
+		httpClient: &http.Client{
+			Timeout: 5 * time.Second,
+		},
 	}
 }
 
@@ -76,8 +80,7 @@ func (c *Checker) kokuHealthy() bool {
 }
 
 func (c *Checker) probeKoku() bool {
-	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get(c.kokuURL + "/api/cost-management/v1/status/")
+	resp, err := c.httpClient.Get(c.kokuURL + "/api/cost-management/v1/status/")
 	if err != nil {
 		return false
 	}

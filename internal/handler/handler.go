@@ -4,9 +4,9 @@ package handler
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/url"
 	"regexp"
@@ -15,6 +15,7 @@ import (
 	oapigen "github.com/dcm-project/koku-cost-provider/internal/api/server"
 	"github.com/dcm-project/koku-cost-provider/internal/health"
 	"github.com/dcm-project/koku-cost-provider/internal/koku"
+	"github.com/dcm-project/koku-cost-provider/internal/metrics"
 	"github.com/dcm-project/koku-cost-provider/internal/monitoring"
 	"github.com/dcm-project/koku-cost-provider/internal/store"
 	"github.com/dcm-project/koku-cost-provider/internal/util"
@@ -25,6 +26,16 @@ var (
 	_ oapigen.StrictServerInterface = (*Handler)(nil)
 
 	safeIDPattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]*$`)
+
+	validCurrencies = map[string]bool{
+		"USD": true, "EUR": true, "GBP": true, "JPY": true, "CNY": true,
+		"CAD": true, "AUD": true, "CHF": true, "INR": true, "BRL": true,
+		"KRW": true, "SEK": true, "NOK": true, "DKK": true, "SGD": true,
+		"HKD": true, "NZD": true, "MXN": true, "ZAR": true, "TRY": true,
+		"PLN": true, "CZK": true, "HUF": true, "ILS": true, "THB": true,
+		"IDR": true, "MYR": true, "PHP": true, "TWD": true, "ARS": true,
+		"CLP": true, "COP": true, "PEN": true, "SAR": true, "AED": true,
+	}
 )
 
 type Handler struct {
@@ -94,8 +105,6 @@ func (h *Handler) CreateInstance(ctx context.Context, req oapigen.CreateInstance
 		), nil
 	}
 
-	// For now use the target resource_id as cluster_id; in production this
-	// would be resolved via ACM kubeconfig + ClusterVersion API.
 	clusterID := spec.Target.ResourceId
 
 	sourceName := name
@@ -103,8 +112,6 @@ func (h *Handler) CreateInstance(ctx context.Context, req oapigen.CreateInstance
 		sourceName = "dcm-" + id
 	}
 
-	// C1+C2 fix: Reserve the target in the store BEFORE calling Koku to
-	// prevent orphaned Koku resources on duplicate target conflict.
 	inst := &store.CostInstance{
 		ID:               id,
 		TargetResourceID: spec.Target.ResourceId,
@@ -117,21 +124,43 @@ func (h *Handler) CreateInstance(ctx context.Context, req oapigen.CreateInstance
 
 	if err := h.store.Create(inst); err != nil {
 		if errors.Is(err, store.ErrAlreadyExists) {
-			return oapigen.CreateInstance409ApplicationProblemPlusJSONResponse(
-				errResp(oapigen.ALREADYEXISTS, 409, "Conflict", "a cost instance already exists for this target cluster"),
+			existing, getErr := h.store.GetByTarget(spec.Target.ResourceId)
+			if getErr != nil || (existing.Status != "ERROR" && existing.Status != "DELETED") {
+				return oapigen.CreateInstance409ApplicationProblemPlusJSONResponse(
+					errResp(oapigen.ALREADYEXISTS, 409, "Conflict", "a cost instance already exists for this target cluster"),
+				), nil
+			}
+			// Reset the failed/deleted row for a fresh provisioning attempt.
+			h.logger.Info("resetting previous failed instance for retry",
+				"existing_id", existing.ID,
+				"previous_status", existing.Status,
+				"target", spec.Target.ResourceId,
+			)
+			inst.ID = existing.ID
+			inst.KokuSourceUUID = ""
+			inst.KokuCostModelUUID = ""
+			if updateErr := h.store.Update(inst); updateErr != nil {
+				h.logger.Error("failed to reset instance for retry", "error", updateErr)
+				return oapigen.CreateInstance500ApplicationProblemPlusJSONResponse(
+					errResp(oapigen.INTERNAL, 500, "Internal Server Error", "failed to reset instance for retry"),
+				), nil
+			}
+			id = inst.ID
+		} else {
+			h.logger.Error("failed to reserve instance", "error", err)
+			return oapigen.CreateInstance500ApplicationProblemPlusJSONResponse(
+				errResp(oapigen.INTERNAL, 500, "Internal Server Error", "failed to persist instance"),
 			), nil
 		}
-		h.logger.Error("failed to reserve instance", "error", err)
-		return oapigen.CreateInstance500ApplicationProblemPlusJSONResponse(
-			errResp(oapigen.INTERNAL, 500, "Internal Server Error", "failed to persist instance"),
-		), nil
 	}
 
-	// Now create Koku resources (safe from orphans -- store row exists).
-	src, err := h.koku.CreateSource(clusterID, sourceName)
+	src, err := h.koku.CreateSource(ctx, clusterID, sourceName)
 	if err != nil {
 		h.logger.Error("failed to create Koku source", "instance_id", id, "error", err)
-		_ = h.store.UpdateStatus(id, "ERROR", "failed to create Koku source: "+err.Error())
+		// Fix #5: delete the reserved store row so the client can retry.
+		if delErr := h.store.UpdateStatus(id, "ERROR", "failed to create Koku source: "+err.Error()); delErr != nil {
+			h.logger.Error("failed to mark instance as ERROR", "instance_id", id, "error", delErr)
+		}
 		return oapigen.CreateInstance500ApplicationProblemPlusJSONResponse(
 			errResp(oapigen.INTERNAL, 500, "Internal Server Error", "failed to create Koku source"),
 		), nil
@@ -140,7 +169,16 @@ func (h *Handler) CreateInstance(ctx context.Context, req oapigen.CreateInstance
 	inst.StatusMessage = "Koku source created, waiting for metering data"
 
 	if spec.CostModel != nil && spec.CostModel.Rates != nil && len(*spec.CostModel.Rates) > 0 {
-		rates := convertRates(*spec.CostModel.Rates)
+		currency := "USD"
+		if spec.Currency != nil && *spec.Currency != "" {
+			currency = *spec.Currency
+		}
+		if !validCurrencies[currency] {
+			return oapigen.CreateInstance400ApplicationProblemPlusJSONResponse(
+				errResp(oapigen.INVALIDARGUMENT, 400, "Bad Request", "unsupported currency: "+currency+"; use ISO 4217 code (e.g. USD, EUR, GBP)"),
+			), nil
+		}
+		rates := convertRates(*spec.CostModel.Rates, currency)
 		var markup *koku.CostModelMarkup
 		if spec.CostModel.Markup != nil {
 			markup = &koku.CostModelMarkup{
@@ -152,22 +190,25 @@ func (h *Handler) CreateInstance(ctx context.Context, req oapigen.CreateInstance
 		if spec.CostModel.Distribution != nil {
 			dist = string(*spec.CostModel.Distribution)
 		}
-		cm, cmErr := h.koku.CreateCostModel(sourceName+"-cost-model", src.UUID, rates, markup, dist)
+		cm, cmErr := h.koku.CreateCostModel(ctx, sourceName+"-cost-model", src.UUID, rates, markup, dist)
 		if cmErr != nil {
 			h.logger.Error("failed to create Koku cost model", "instance_id", id, "error", cmErr)
+			// Fix #10: note the partial failure in the status message
+			inst.StatusMessage = "Koku source created; cost model creation failed — metering available but cost rates not applied"
 		} else {
 			inst.KokuCostModelUUID = cm.UUID
 		}
 	}
 
-	// Persist the Koku resource IDs back to the store row.
 	if err := h.store.Update(inst); err != nil {
 		h.logger.Error("failed to update instance with Koku IDs", "instance_id", id, "error", err)
 	}
 
-	if err := h.publisher.Publish(ctx, id, "PROVISIONING", "Koku source created, waiting for metering data"); err != nil {
+	if err := h.publisher.Publish(ctx, id, "PROVISIONING", inst.StatusMessage); err != nil {
 		h.logger.Warn("failed to publish PROVISIONING event", "instance_id", id, "error", err)
 	}
+
+	metrics.InstancesManaged.Inc()
 
 	h.logger.Info("instance created",
 		"instance_id", id,
@@ -207,10 +248,7 @@ func (h *Handler) ListInstances(_ context.Context, req oapigen.ListInstancesRequ
 
 	offset := 0
 	if req.Params.PageToken != nil && *req.Params.PageToken != "" {
-		parsed, err := strconv.Atoi(*req.Params.PageToken)
-		if err == nil && parsed >= 0 {
-			offset = parsed
-		}
+		offset = decodePageToken(*req.Params.PageToken)
 	}
 
 	instances, total, err := h.store.List(pageSize, offset)
@@ -227,7 +265,7 @@ func (h *Handler) ListInstances(_ context.Context, req oapigen.ListInstancesRequ
 
 	var nextToken *string
 	if int64(offset+pageSize) < total {
-		t := fmt.Sprintf("%d", offset+pageSize)
+		t := encodePageToken(offset + pageSize)
 		nextToken = &t
 	}
 
@@ -252,19 +290,18 @@ func (h *Handler) DeleteInstance(ctx context.Context, req oapigen.DeleteInstance
 		), nil
 	}
 
-	// C4 fix: prevent double-delete
 	if inst.Status == "DELETED" {
 		return oapigen.DeleteInstance204Response{}, nil
 	}
 
 	if inst.KokuCostModelUUID != "" {
-		if err := h.koku.DeleteCostModel(inst.KokuCostModelUUID); err != nil {
+		if err := h.koku.DeleteCostModel(ctx, inst.KokuCostModelUUID); err != nil {
 			h.logger.Error("failed to delete Koku cost model", "instance_id", inst.ID, "error", err)
 		}
 	}
 
 	if inst.KokuSourceUUID != "" {
-		if err := h.koku.PauseSource(inst.KokuSourceUUID); err != nil {
+		if err := h.koku.PauseSource(ctx, inst.KokuSourceUUID); err != nil {
 			h.logger.Error("failed to pause Koku source", "instance_id", inst.ID, "error", err)
 		}
 	}
@@ -276,6 +313,8 @@ func (h *Handler) DeleteInstance(ctx context.Context, req oapigen.DeleteInstance
 	if err := h.publisher.Publish(ctx, inst.ID, "DELETED", "instance deleted"); err != nil {
 		h.logger.Warn("failed to publish DELETED event", "instance_id", inst.ID, "error", err)
 	}
+
+	metrics.InstancesManaged.Dec()
 
 	h.logger.Info("instance deleted",
 		"instance_id", inst.ID,
@@ -289,7 +328,7 @@ func (h *Handler) DeleteInstance(ctx context.Context, req oapigen.DeleteInstance
 
 // ---------- Usage proxy ----------
 
-func (h *Handler) GetUsage(_ context.Context, req oapigen.GetUsageRequestObject) (oapigen.GetUsageResponseObject, error) {
+func (h *Handler) GetUsage(ctx context.Context, req oapigen.GetUsageRequestObject) (oapigen.GetUsageResponseObject, error) {
 	inst, err := h.store.Get(req.InstanceId)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
@@ -310,22 +349,19 @@ func (h *Handler) GetUsage(_ context.Context, req oapigen.GetUsageRequestObject)
 		params.Set("end_date", req.Params.EndDate.Format("2006-01-02"))
 	}
 
-	data, err := h.koku.GetReports(inst.ClusterID, string(req.Metric), params)
+	result, err := h.proxyReport(ctx, inst.ClusterID, string(req.Metric), params)
 	if err != nil {
 		h.logger.Error("failed to get usage from Koku", "error", err)
 		return oapigen.GetUsage502ApplicationProblemPlusJSONResponse(
 			errResp(oapigen.BADGATEWAY, 502, "Bad Gateway", "failed to retrieve usage data from Koku"),
 		), nil
 	}
-
-	var result map[string]any
-	_ = json.Unmarshal(data, &result)
 	return oapigen.GetUsage200JSONResponse(result), nil
 }
 
 // ---------- Cost report proxy ----------
 
-func (h *Handler) GetCostReport(_ context.Context, req oapigen.GetCostReportRequestObject) (oapigen.GetCostReportResponseObject, error) {
+func (h *Handler) GetCostReport(ctx context.Context, req oapigen.GetCostReportRequestObject) (oapigen.GetCostReportResponseObject, error) {
 	inst, err := h.store.Get(req.InstanceId)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
@@ -346,22 +382,19 @@ func (h *Handler) GetCostReport(_ context.Context, req oapigen.GetCostReportRequ
 		params.Set("end_date", req.Params.EndDate.Format("2006-01-02"))
 	}
 
-	data, err := h.koku.GetReports(inst.ClusterID, "costs", params)
+	result, err := h.proxyReport(ctx, inst.ClusterID, "costs", params)
 	if err != nil {
 		h.logger.Error("failed to get cost report from Koku", "error", err)
 		return oapigen.GetCostReport502ApplicationProblemPlusJSONResponse(
 			errResp(oapigen.BADGATEWAY, 502, "Bad Gateway", "failed to retrieve cost report from Koku"),
 		), nil
 	}
-
-	var result map[string]any
-	_ = json.Unmarshal(data, &result)
 	return oapigen.GetCostReport200JSONResponse(result), nil
 }
 
 // ---------- Forecast proxy ----------
 
-func (h *Handler) GetCostForecast(_ context.Context, req oapigen.GetCostForecastRequestObject) (oapigen.GetCostForecastResponseObject, error) {
+func (h *Handler) GetCostForecast(ctx context.Context, req oapigen.GetCostForecastRequestObject) (oapigen.GetCostForecastResponseObject, error) {
 	inst, err := h.store.Get(req.InstanceId)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
@@ -374,7 +407,7 @@ func (h *Handler) GetCostForecast(_ context.Context, req oapigen.GetCostForecast
 		), nil
 	}
 
-	data, err := h.koku.GetForecasts(inst.ClusterID, nil)
+	data, err := h.koku.GetForecasts(ctx, inst.ClusterID, nil)
 	if err != nil {
 		h.logger.Error("failed to get forecast from Koku", "error", err)
 		return oapigen.GetCostForecast502ApplicationProblemPlusJSONResponse(
@@ -388,6 +421,17 @@ func (h *Handler) GetCostForecast(_ context.Context, req oapigen.GetCostForecast
 }
 
 // ---------- Helpers ----------
+
+// proxyReport is a shared helper for usage and cost report proxy endpoints (fix #11).
+func (h *Handler) proxyReport(ctx context.Context, clusterID, reportType string, params url.Values) (map[string]any, error) {
+	data, err := h.koku.GetReports(ctx, clusterID, reportType, params)
+	if err != nil {
+		return nil, err
+	}
+	var result map[string]any
+	_ = json.Unmarshal(data, &result)
+	return result, nil
+}
 
 func toAPICostInstance(inst *store.CostInstance) oapigen.CostInstance {
 	path := "instances/" + inst.ID
@@ -415,7 +459,7 @@ func toAPICostInstance(inst *store.CostInstance) oapigen.CostInstance {
 	return ci
 }
 
-func convertRates(rates []oapigen.Rate) []koku.CostModelRate {
+func convertRates(rates []oapigen.Rate, currency string) []koku.CostModelRate {
 	result := make([]koku.CostModelRate, 0, len(rates))
 	for _, r := range rates {
 		costType := "Infrastructure"
@@ -426,11 +470,28 @@ func convertRates(rates []oapigen.Rate) []koku.CostModelRate {
 			Metric:   koku.CostModelMetric{Name: string(r.Metric)},
 			CostType: costType,
 			TieredRates: []koku.CostModelTieredRate{
-				{Value: r.Value, Unit: "USD"},
+				{Value: r.Value, Unit: currency},
 			},
 		})
 	}
 	return result
+}
+
+// Fix #9: opaque pagination tokens
+func encodePageToken(offset int) string {
+	return base64.RawURLEncoding.EncodeToString([]byte(strconv.Itoa(offset)))
+}
+
+func decodePageToken(token string) int {
+	data, err := base64.RawURLEncoding.DecodeString(token)
+	if err != nil {
+		return 0
+	}
+	v, err := strconv.Atoi(string(data))
+	if err != nil || v < 0 {
+		return 0
+	}
+	return v
 }
 
 func errResp(errType oapigen.ErrorType, status int32, title, detail string) oapigen.Error {

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/dcm-project/koku-cost-provider/internal/metrics"
 	"github.com/nats-io/nats.go"
 )
 
@@ -25,9 +26,9 @@ type NATSPublisher struct {
 
 func NewNATSPublisher(natsURL, providerName string, logger *slog.Logger) (*NATSPublisher, error) {
 	conn, err := nats.Connect(natsURL,
+		nats.Timeout(5*time.Second),
 		nats.MaxReconnects(-1),
 		nats.ReconnectWait(2*time.Second),
-		nats.RetryOnFailedConnect(true),
 		nats.DisconnectErrHandler(func(_ *nats.Conn, err error) {
 			logger.Error("NATS disconnected", "error", err)
 		}),
@@ -51,7 +52,11 @@ func (p *NATSPublisher) Publish(_ context.Context, instanceID, status, message s
 	if err != nil {
 		return fmt.Errorf("marshaling cloud event: %w", err)
 	}
-	return p.conn.Publish(p.subject, data)
+	if err := p.conn.Publish(p.subject, data); err != nil {
+		return err
+	}
+	metrics.NATSEventsPublished.Inc()
+	return nil
 }
 
 func (p *NATSPublisher) Close() error {

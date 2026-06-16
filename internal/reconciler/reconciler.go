@@ -12,11 +12,22 @@ import (
 	"github.com/dcm-project/koku-cost-provider/internal/store"
 )
 
+type instanceLister interface {
+	ListByStatus(status string) ([]store.CostInstance, error)
+	UpdateStatus(id, status, message string) error
+}
+
+type sourceStatter interface {
+	GetSourceStats(ctx context.Context, uuid string) (koku.SourceStatsResponse, error)
+}
+
+const perInstanceTimeout = 30 * time.Second
+
 // Reconciler polls Koku for PROVISIONING instances and transitions them to
 // READY once first metering data is received.
 type Reconciler struct {
-	store     *store.Store
-	koku      *koku.Client
+	store     instanceLister
+	koku      sourceStatter
 	publisher monitoring.StatusPublisher
 	logger    *slog.Logger
 	interval  time.Duration
@@ -24,7 +35,7 @@ type Reconciler struct {
 	done      chan struct{}
 }
 
-func New(s *store.Store, k *koku.Client, pub monitoring.StatusPublisher, logger *slog.Logger, interval, timeout time.Duration) *Reconciler {
+func New(s instanceLister, k sourceStatter, pub monitoring.StatusPublisher, logger *slog.Logger, interval, timeout time.Duration) *Reconciler {
 	return &Reconciler{
 		store:     s,
 		koku:      k,
@@ -92,7 +103,10 @@ func (r *Reconciler) reconcileOne(ctx context.Context, inst store.CostInstance) 
 		return
 	}
 
-	stats, err := r.koku.GetSourceStats(inst.KokuSourceUUID)
+	opCtx, cancel := context.WithTimeout(ctx, perInstanceTimeout)
+	defer cancel()
+
+	stats, err := r.koku.GetSourceStats(opCtx, inst.KokuSourceUUID)
 	if err != nil {
 		r.logger.Warn("failed to get source stats", "id", inst.ID, "koku_source", inst.KokuSourceUUID, "error", err)
 		return

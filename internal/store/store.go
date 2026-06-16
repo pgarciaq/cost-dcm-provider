@@ -1,4 +1,8 @@
 // Package store provides SQLite-backed persistence for cost instances.
+//
+// Instances use soft-delete semantics: deletion sets status to "DELETED"
+// via UpdateStatus rather than removing the row. This preserves the
+// audit trail (creation time, Koku resource IDs, status transitions).
 package store
 
 import (
@@ -42,17 +46,7 @@ func (s *Store) Create(inst *CostInstance) error {
 	return err
 }
 
-// ReserveTarget atomically inserts a placeholder row to claim a target
-// resource. Returns ErrAlreadyExists if the target is already claimed.
-func (s *Store) ReserveTarget(inst *CostInstance) error {
-	err := s.db.Create(inst).Error
-	if err != nil && isUniqueConstraintError(err) {
-		return ErrAlreadyExists
-	}
-	return err
-}
-
-// Update saves all non-zero fields on an existing instance.
+// Update saves all fields on an existing instance.
 func (s *Store) Update(inst *CostInstance) error {
 	return s.db.Save(inst).Error
 }
@@ -60,6 +54,16 @@ func (s *Store) Update(inst *CostInstance) error {
 func (s *Store) Get(id string) (*CostInstance, error) {
 	var inst CostInstance
 	err := s.db.First(&inst, "id = ?", id).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrNotFound
+	}
+	return &inst, err
+}
+
+// GetByTarget looks up an instance by its target_resource_id (the cluster).
+func (s *Store) GetByTarget(targetResourceID string) (*CostInstance, error) {
+	var inst CostInstance
+	err := s.db.First(&inst, "target_resource_id = ?", targetResourceID).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, ErrNotFound
 	}
@@ -77,14 +81,6 @@ func (s *Store) List(limit, offset int) ([]CostInstance, int64, error) {
 func (s *Store) UpdateStatus(id, status, message string) error {
 	result := s.db.Model(&CostInstance{}).Where("id = ?", id).
 		Updates(map[string]any{"status": status, "status_message": message})
-	if result.RowsAffected == 0 {
-		return ErrNotFound
-	}
-	return result.Error
-}
-
-func (s *Store) Delete(id string) error {
-	result := s.db.Delete(&CostInstance{}, "id = ?", id)
 	if result.RowsAffected == 0 {
 		return ErrNotFound
 	}
