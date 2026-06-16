@@ -63,6 +63,7 @@ internal/
   handler/                  SP contract implementation (create / get / list / delete)
   health/                   Health checker with Koku probe caching
   koku/                     Koku REST API client
+  metrics/                  Prometheus metric definitions
   monitoring/               CloudEvent publisher (NATS)
   reconciler/               Background loop: PROVISIONING → READY
   registration/             SP self-registration with DCM

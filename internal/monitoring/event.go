@@ -23,21 +23,23 @@ type CloudEvent struct {
 
 // StatusPayload is the data portion of a status CloudEvent.
 type StatusPayload struct {
-	ID      string `json:"id"`
-	Status  string `json:"status"`
-	Message string `json:"message"`
+	ID        string    `json:"id"`
+	Status    string    `json:"status"`
+	Message   string    `json:"message"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 // NewStatusCloudEvent creates a CloudEvent for a cost instance status change.
 func NewStatusCloudEvent(providerName, instanceID, status, message string) *CloudEvent {
+	now := time.Now().UTC()
 	return &CloudEvent{
 		SpecVersion:     "1.0",
 		ID:              uuid.New().String(),
 		Source:          fmt.Sprintf("dcm/providers/%s", providerName),
 		Type:            "dcm.status.cost",
 		Subject:         "dcm.cost",
-		Time:            time.Now().UTC().Format(time.RFC3339),
+		Time:            now.Format(time.RFC3339),
 		DataContentType: "application/json",
-		Data:            StatusPayload{ID: instanceID, Status: status, Message: message},
+		Data:            StatusPayload{ID: instanceID, Status: status, Message: message, Timestamp: now},
 	}
 }

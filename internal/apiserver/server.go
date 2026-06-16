@@ -17,6 +17,7 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	legacyrouter "github.com/getkin/kin-openapi/routers/legacy"
 	"github.com/go-chi/chi/v5"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type Server struct {
@@ -61,11 +62,15 @@ func New(cfg *config.Config, logger *slog.Logger, handler oapigen.ServerInterfac
 		ErrorHandlerFunc: badReq,
 	})
 
+	root := http.NewServeMux()
+	root.Handle("/metrics", promhttp.Handler())
+	root.Handle("/", httpHandler)
+
 	return &Server{
 		cfg:    cfg,
 		logger: logger,
 		srv: &http.Server{
-			Handler:      httpHandler,
+			Handler:      root,
 			ReadTimeout:  cfg.Server.ReadTimeout,
 			WriteTimeout: cfg.Server.WriteTimeout,
 			IdleTimeout:  cfg.Server.IdleTimeout,

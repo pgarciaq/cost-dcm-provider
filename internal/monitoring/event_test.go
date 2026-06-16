@@ -1,9 +1,15 @@
 package monitoring
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestNewStatusCloudEvent(t *testing.T) {
+	before := time.Now().UTC()
 	ce := NewStatusCloudEvent("my-sp", "instance-123", "READY", "data received")
+	after := time.Now().UTC()
+
 	if ce.SpecVersion != "1.0" {
 		t.Errorf("expected specversion 1.0, got %s", ce.SpecVersion)
 	}
@@ -22,5 +28,11 @@ func TestNewStatusCloudEvent(t *testing.T) {
 	}
 	if payload.Status != "READY" {
 		t.Errorf("expected status READY, got %s", payload.Status)
+	}
+	if payload.Message != "data received" {
+		t.Errorf("expected message 'data received', got %s", payload.Message)
+	}
+	if payload.Timestamp.Before(before) || payload.Timestamp.After(after) {
+		t.Errorf("expected timestamp between %v and %v, got %v", before, after, payload.Timestamp)
 	}
 }
