@@ -127,7 +127,7 @@ func (h *Handler) CreateInstance(ctx context.Context, req oapigen.CreateInstance
 			existing, getErr := h.store.GetByTarget(spec.Target.ResourceId)
 			if getErr != nil {
 				h.logger.Error("failed to look up existing instance", "error", getErr)
-				return oapigen.CreateInstance500ApplicationProblemPlusJSONResponse( //nolint:nilerr // returning error as HTTP response
+				return oapigen.CreateInstance500ApplicationProblemPlusJSONResponse(
 					errResp(oapigen.INTERNAL, 500, "Internal Server Error", "failed to look up existing instance"),
 				), nil
 			}
