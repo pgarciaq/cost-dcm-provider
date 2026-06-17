@@ -125,7 +125,13 @@ func (h *Handler) CreateInstance(ctx context.Context, req oapigen.CreateInstance
 	if err := h.store.Create(inst); err != nil {
 		if errors.Is(err, store.ErrAlreadyExists) {
 			existing, getErr := h.store.GetByTarget(spec.Target.ResourceId)
-			if getErr != nil || (existing.Status != "ERROR" && existing.Status != "DELETED") {
+			if getErr != nil {
+				h.logger.Error("failed to look up existing instance", "error", getErr)
+				return oapigen.CreateInstance500ApplicationProblemPlusJSONResponse( //nolint:nilerr // returning error as HTTP response
+					errResp(oapigen.INTERNAL, 500, "Internal Server Error", "failed to look up existing instance"),
+				), nil
+			}
+			if existing.Status != "ERROR" && existing.Status != "DELETED" {
 				return oapigen.CreateInstance409ApplicationProblemPlusJSONResponse(
 					errResp(oapigen.ALREADYEXISTS, 409, "Conflict", "a cost instance already exists for this target cluster"),
 				), nil

@@ -421,7 +421,9 @@ func TestRetryAfterError(t *testing.T) {
 	}
 
 	// Simulate failure by marking it ERROR
-	h.store.UpdateStatus("first-attempt", "ERROR", "simulated failure")
+	if err := h.store.UpdateStatus("first-attempt", "ERROR", "simulated failure"); err != nil {
+		t.Fatalf("failed to set ERROR status: %v", err)
+	}
 
 	// Retry with a different ID for the same target should succeed
 	id2 := "second-attempt"

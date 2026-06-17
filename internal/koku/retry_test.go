@@ -35,7 +35,7 @@ func TestRetryOn500(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected success after retries, got: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
 	}
@@ -51,7 +51,10 @@ func TestRetryExhausted(t *testing.T) {
 	defer ts.Close()
 
 	c := newTestClient(ts.URL)
-	_, err := c.doWithRetry(context.Background(), http.MethodGet, "/test", nil)
+	resp, err := c.doWithRetry(context.Background(), http.MethodGet, "/test", nil)
+	if resp != nil {
+		defer func() { _ = resp.Body.Close() }()
+	}
 	if err == nil {
 		t.Fatal("expected error after all retries exhausted")
 	}
@@ -67,7 +70,10 @@ func TestRetryRespectsContextCancellation(t *testing.T) {
 	cancel()
 
 	c := newTestClient(ts.URL)
-	_, err := c.doWithRetry(ctx, http.MethodGet, "/test", nil)
+	resp, err := c.doWithRetry(ctx, http.MethodGet, "/test", nil)
+	if resp != nil {
+		defer func() { _ = resp.Body.Close() }()
+	}
 	if err == nil {
 		t.Fatal("expected error when context is cancelled")
 	}
@@ -86,7 +92,7 @@ func TestNoRetryOn4xx(t *testing.T) {
 	if err != nil {
 		t.Fatalf("4xx should not cause retry error: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if attempts.Load() != 1 {
 		t.Errorf("expected exactly 1 attempt for 4xx, got %d", attempts.Load())
 	}
