@@ -1,0 +1,44 @@
+title: Cost-Aware Cluster Placement
+uuid: uc-fdbf5467-2d5b-4e94-8b23-d3607dd4b1b3
+handle: cost/prod/cost-aware-placement
+scenario:
+  description: >
+    A consumer requests a new cluster. The placement policy queries
+    historical cost data across existing clusters — average cost per
+    core-hour by provider and region. Multiple providers are eligible. The
+    policy selects the provider with the lowest average cost per core-hour,
+    subject to compliance constraints such as data residency and
+    certification requirements. Cost data from the cost service directly
+    informs cluster placement decisions.
+  actor:
+    persona: consumer
+    profile: prod
+  intent: Automatically select the most cost-efficient provider for new cluster provisioning based on historical cost data
+  success_criteria:
+    - Placement policy queries historical cost-per-core-hour by provider and region
+    - Multiple eligible providers are compared on cost efficiency
+    - Cheapest compliant provider is selected
+    - Compliance constraints are honored over cost optimization
+  dimensions:
+    lifecycle_phase: new_request
+    resource_complexity: composite_service
+    policy_complexity: dynamic_conditional_flow
+    provider_landscape: multiple_eligible
+    governance_context: standard_governance
+    failure_mode: happy_path
+  profile: prod
+  expected_domain_interactions:
+    - domain: cost/analytics
+      interaction: query_historical_cost_per_core_hour
+    - domain: compute/cluster
+      interaction: select_cost_optimal_provider
+generated_by:
+  mode: authoring
+  source: human-authored
+tags:
+  - cost-management
+  - placement
+  - cross-service-type
+  - cost-optimization
+  - multi-provider
+metadata: {}

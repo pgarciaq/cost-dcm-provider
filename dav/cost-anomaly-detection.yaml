@@ -1,0 +1,44 @@
+title: Cost Anomaly Triggers Investigation
+uuid: uc-a9ad32dd-1ef4-4a1a-bfdf-9cb0a3c7f92a
+handle: cost/prod/cost-anomaly-detection
+scenario:
+  description: >
+    Cost tracking detects that a production cluster's metering data shows a
+    3x spike in CPU utilization compared to the previous month's average. An
+    alert is raised with the anomaly details. The operator investigates by
+    querying the per-namespace usage breakdown and discovers runaway workloads
+    in a tenant namespace consuming 10x their normal CPU. The anomaly
+    detection is driven entirely by metering data and works without a cost
+    model configured.
+  actor:
+    persona: platform-operations
+    profile: prod
+  intent: Detect unexpected utilization spikes early and enable rapid root-cause investigation
+  success_criteria:
+    - Utilization spike exceeding the anomaly threshold is detected
+    - Alert is raised with anomaly details (cluster, metric, current vs baseline)
+    - Operator queries per-namespace breakdown to isolate the source
+    - Root cause is identified
+    - Detection works at all tiers including basic metering
+  dimensions:
+    lifecycle_phase: drift_detection
+    resource_complexity: composite_service
+    policy_complexity: system_defaults_only
+    provider_landscape: single_eligible
+    governance_context: standard_governance
+    failure_mode: happy_path
+  profile: prod
+  expected_domain_interactions:
+    - domain: cost/analytics
+      interaction: detect_utilization_anomaly
+    - domain: cost/metering
+      interaction: query_namespace_usage_breakdown
+generated_by:
+  mode: authoring
+  source: human-authored
+tags:
+  - cost-management
+  - anomaly-detection
+  - drift-detection
+  - observability
+metadata: {}

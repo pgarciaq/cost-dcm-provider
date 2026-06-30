@@ -1,0 +1,44 @@
+title: Fleet Efficiency Scoring
+uuid: uc-c3c75d4e-0cf9-444f-b0c2-2e269bf7692b
+handle: cost/prod/fleet-efficiency-score
+scenario:
+  description: >
+    Cost tracking aggregates optimization data across the entire fleet of
+    managed clusters into an efficiency score — the percentage of
+    provisioned resources that are actively utilized. The score is broken
+    down by cluster, namespace, and resource type (CPU, memory, storage).
+    The operator tracks the score over time to measure the impact of
+    right-sizing campaigns and identify the teams or namespaces with the
+    most over-provisioned resources.
+  actor:
+    persona: platform-operations
+    profile: prod
+  intent: Provide a fleet-wide efficiency metric that tracks resource utilization improvement over time
+  success_criteria:
+    - Fleet efficiency score is calculated as a percentage of provisioned resources utilized
+    - Score is broken down by cluster, namespace, and resource type
+    - Historical scores are retained for trend analysis
+    - Namespaces with the lowest efficiency are highlighted for remediation
+  dimensions:
+    lifecycle_phase: drift_detection
+    resource_complexity: composite_service
+    policy_complexity: system_defaults_only
+    provider_landscape: single_eligible
+    governance_context: standard_governance
+    failure_mode: happy_path
+  profile: prod
+  expected_domain_interactions:
+    - domain: cost/optimization
+      interaction: calculate_fleet_efficiency_score
+    - domain: cost/optimization
+      interaction: query_efficiency_trends
+generated_by:
+  mode: authoring
+  source: human-authored
+tags:
+  - cost-management
+  - optimization
+  - efficiency
+  - fleet-management
+  - reporting
+metadata: {}

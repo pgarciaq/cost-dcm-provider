@@ -1,0 +1,43 @@
+title: Custom Rates for Specialized Hardware Cluster
+uuid: uc-dcb6ba57-cb24-4bc1-99ef-29b2843e372f
+handle: cost/prod/custom-rates-override
+scenario:
+  description: >
+    A specific cluster runs specialized hardware — GPU nodes and high-memory
+    instances — that does not fit the organization's standard rate card. The
+    operator manually creates a cost instance with custom rates reflecting the
+    true hardware cost. Rate governance policy constrains all rate values to
+    an acceptable range. The custom instance goes through the full policy
+    pipeline before being applied.
+  actor:
+    persona: platform-operator
+    profile: prod
+  intent: Apply non-standard rates to a cluster with specialized hardware while staying within governance constraints
+  success_criteria:
+    - Operator creates a cost instance with custom rates for the specialized cluster
+    - Rate governance policy validates all rate values are within acceptable bounds
+    - Cost reports reflect the custom rates for this specific cluster
+    - Other clusters continue using the standard rate card
+  dimensions:
+    lifecycle_phase: new_request
+    resource_complexity: single_no_deps
+    policy_complexity: single_gatekeeper
+    provider_landscape: single_eligible
+    governance_context: standard_governance
+    failure_mode: happy_path
+  profile: prod
+  expected_domain_interactions:
+    - domain: cost/full-cost
+      interaction: create_custom_rate_cost_model
+    - domain: cost/governance
+      interaction: validate_rate_constraints
+generated_by:
+  mode: authoring
+  source: human-authored
+tags:
+  - cost-management
+  - full-cost
+  - tier-3
+  - custom-rates
+  - rate-governance
+metadata: {}

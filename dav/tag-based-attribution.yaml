@@ -1,0 +1,47 @@
+title: Tag-Based Cost Attribution
+uuid: uc-9e904103-a9ce-4266-b0a3-8e3f45c87768
+handle: cost/standard/tag-based-attribution
+scenario:
+  description: >
+    The operator configures cost tracking with tag-based rates. Resources
+    tagged with specific business-unit, project, or environment labels
+    receive cost attribution based on matching tag values. Different tag
+    values can have different rates — for example, workloads tagged
+    "tier=gold" are charged at a premium rate, while "tier=standard" uses
+    the base rate. Resources without recognized tags are assigned to a
+    default cost category and flagged for remediation. This enables
+    granular cost attribution without requiring separate cost models per
+    team.
+  actor:
+    persona: platform-operator
+    profile: prod
+  intent: Attribute costs to business entities using resource tags without requiring per-team cost model configuration
+  success_criteria:
+    - Tag-based rates are applied to resources matching specific tag key-value pairs
+    - Different tag values produce different cost attributions
+    - Untagged resources are assigned to a default category
+    - Untagged resources are flagged for tag remediation
+    - Cost reports show attribution by tag value
+  dimensions:
+    lifecycle_phase: new_request
+    resource_complexity: composite_service
+    policy_complexity: multi_policy_chain
+    provider_landscape: single_eligible
+    governance_context: standard_governance
+    failure_mode: happy_path
+  profile: prod
+  expected_domain_interactions:
+    - domain: cost/full-cost
+      interaction: create_tag_based_cost_model
+    - domain: cost/governance
+      interaction: flag_untagged_resources
+generated_by:
+  mode: authoring
+  source: human-authored
+tags:
+  - cost-management
+  - tags
+  - cost-attribution
+  - tier-3
+  - governance
+metadata: {}

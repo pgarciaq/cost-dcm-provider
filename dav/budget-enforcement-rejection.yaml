@@ -1,0 +1,45 @@
+title: Budget Enforcement Blocks Cluster Provisioning
+uuid: uc-92b75ab2-8ab5-4518-9075-1b49ed7d38a4
+handle: cost/prod/budget-enforcement-rejection
+scenario:
+  description: >
+    A team requests a new production cluster. The budget enforcement policy
+    queries current total spend across all clusters and estimates the new
+    cluster's monthly cost based on its node count, CPU, and memory. The
+    projected total exceeds the organization's budget threshold. The request
+    is rejected with a message specifying the projected cost, the budget
+    limit, and guidance to reduce worker count or CPU.
+  actor:
+    persona: consumer
+    profile: prod
+  intent: Prevent infrastructure provisioning that would exceed the organization's cost budget
+  success_criteria:
+    - Budget policy queries current total spend from cost tracking data
+    - New cluster cost is estimated from its specification and standard rates
+    - Projected total exceeds the configured budget threshold
+    - Provisioning request is rejected with specific cost details and remediation guidance
+  dimensions:
+    lifecycle_phase: new_request
+    resource_complexity: composite_service
+    policy_complexity: governance_matrix_enforcement
+    provider_landscape: single_eligible
+    governance_context: compliance_gated
+    failure_mode: policy_violation
+  profile: prod
+  expected_domain_interactions:
+    - domain: cost/budget
+      interaction: query_current_total_spend
+    - domain: cost/budget
+      interaction: estimate_new_resource_cost
+    - domain: compute/cluster
+      interaction: reject_provisioning_request
+generated_by:
+  mode: authoring
+  source: human-authored
+tags:
+  - cost-management
+  - budget
+  - policy
+  - cross-service-type
+  - governance
+metadata: {}

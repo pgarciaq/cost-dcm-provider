@@ -1,0 +1,43 @@
+title: Cost Instance Tier Upgrade
+uuid: uc-17c1633c-8cce-4643-a8ce-5b812ea04990
+handle: cost/standard/tier-upgrade
+scenario:
+  description: >
+    A cluster was initially provisioned with basic metering only (no cost
+    model). After a quarter of collecting utilization data, the operator
+    decides the cluster needs full cost tracking for chargeback. The operator
+    removes the existing basic metering instance and creates a new one with
+    full cost tracking. The metering source is reused — only a cost model
+    with rates is added. Rates are applied to existing metering data,
+    generating cost reports retroactively for the available history.
+  actor:
+    persona: platform-operator
+    profile: standard
+  intent: Upgrade a cluster from basic metering to full cost tracking without losing existing metering data
+  success_criteria:
+    - Existing basic metering instance is removed (metering source is preserved)
+    - New full-cost instance reuses the existing metering source
+    - Cost model with rates is created and assigned
+    - Rates are applied to existing metering data, generating retroactive cost reports
+  dimensions:
+    lifecycle_phase: modification
+    resource_complexity: single_no_deps
+    policy_complexity: system_defaults_only
+    provider_landscape: single_eligible
+    governance_context: standard_governance
+    failure_mode: happy_path
+  profile: standard
+  expected_domain_interactions:
+    - domain: cost/lifecycle
+      interaction: remove_basic_metering_instance
+    - domain: cost/lifecycle
+      interaction: create_full_cost_instance_reuse_source
+generated_by:
+  mode: authoring
+  source: human-authored
+tags:
+  - cost-management
+  - lifecycle
+  - tier-upgrade
+  - modification
+metadata: {}

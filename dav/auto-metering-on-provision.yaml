@@ -1,0 +1,42 @@
+title: Automatic Cluster Metering on Provisioning
+uuid: uc-edb6bf2d-829e-4c97-8587-34d084fad73e
+handle: cost/standard/auto-metering-on-provision
+scenario:
+  description: >
+    When a cluster is provisioned through DCM, cost tracking is automatically
+    configured based on the cluster's labels. A metering agent begins
+    collecting CPU, memory, and storage utilization from the cluster. Once
+    data is flowing, the cost instance becomes active and the tenant can
+    query their utilization metrics. No per-cluster manual configuration
+    is required.
+  actor:
+    persona: platform-operator
+    profile: prod
+  intent: Every cluster provisioned through DCM automatically gets metering without per-cluster manual configuration
+  success_criteria:
+    - Cost tracking is created automatically when a cluster reaches ready state
+    - CPU, memory, and storage utilization data begins flowing without manual intervention
+    - Cost instance transitions to active once metering data is confirmed
+    - Tenant can query utilization via the cost service read-only API
+  dimensions:
+    lifecycle_phase: new_request
+    resource_complexity: composite_service
+    policy_complexity: system_defaults_only
+    provider_landscape: single_eligible
+    governance_context: standard_governance
+    failure_mode: happy_path
+  profile: prod
+  expected_domain_interactions:
+    - domain: cost/metering
+      interaction: create_metering_source
+    - domain: cost/metering
+      interaction: verify_agent_deployment
+generated_by:
+  mode: authoring
+  source: human-authored
+tags:
+  - cost-management
+  - metering
+  - tier-1
+  - automation
+metadata: {}

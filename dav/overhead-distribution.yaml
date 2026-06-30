@@ -1,0 +1,42 @@
+title: Overhead Distribution Across Projects
+uuid: uc-792b7c49-81f0-45c9-a37d-23c726f36ece
+handle: cost/standard/overhead-distribution
+scenario:
+  description: >
+    The operator configures cost tracking with a distribution model but no
+    price list. Platform overhead — control plane, worker node idle capacity,
+    unattributed storage, network, and GPU — is categorized and distributed
+    proportionally across tenant projects based on their resource usage. The
+    operator can see where cluster overhead goes without assigning dollar
+    amounts.
+  actor:
+    persona: platform-operator
+    profile: prod
+  intent: Categorize and distribute cluster overhead across tenant projects without requiring a price list
+  success_criteria:
+    - Platform overhead is categorized into control plane, worker unallocated, storage, network, and GPU
+    - Overhead is distributed proportionally to tenant projects based on usage
+    - Operator can query per-namespace overhead attribution
+    - No dollar amounts appear in the output
+  dimensions:
+    lifecycle_phase: new_request
+    resource_complexity: composite_service
+    policy_complexity: system_defaults_only
+    provider_landscape: single_eligible
+    governance_context: standard_governance
+    failure_mode: happy_path
+  profile: prod
+  expected_domain_interactions:
+    - domain: cost/distribution
+      interaction: create_distribution_model
+    - domain: cost/distribution
+      interaction: distribute_overhead_by_usage
+generated_by:
+  mode: authoring
+  source: human-authored
+tags:
+  - cost-management
+  - distribution
+  - tier-2
+  - overhead
+metadata: {}

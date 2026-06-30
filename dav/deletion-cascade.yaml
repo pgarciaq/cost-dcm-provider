@@ -1,0 +1,42 @@
+title: Cluster Deletion Cascades to Cost Instance
+uuid: uc-6cbc031f-03b4-4708-b798-c21be4b33bed
+handle: cost/prod/deletion-cascade
+scenario:
+  description: >
+    A tenant deletes their cluster through DCM. The system detects the
+    deletion event and finds the associated cost instance. Cost tracking is
+    removed: the metering source is paused (preserving all historical data
+    for audit) and the cost model is deleted. Historical metering and cost
+    data remains queryable for compliance and financial reporting.
+  actor:
+    persona: tenant
+    profile: prod
+  intent: Automatically clean up cost tracking when a cluster is deleted while preserving historical data for audit
+  success_criteria:
+    - Cluster deletion triggers automatic cleanup of the associated cost instance
+    - Metering source is paused, not deleted (historical data preserved)
+    - Cost model is removed
+    - Historical metering and cost data remains queryable
+  dimensions:
+    lifecycle_phase: decommission
+    resource_complexity: hard_dependencies
+    policy_complexity: system_defaults_only
+    provider_landscape: single_eligible
+    governance_context: standard_governance
+    failure_mode: happy_path
+  profile: prod
+  expected_domain_interactions:
+    - domain: cost/lifecycle
+      interaction: cascade_delete_from_cluster
+    - domain: cost/lifecycle
+      interaction: pause_metering_source
+generated_by:
+  mode: authoring
+  source: human-authored
+tags:
+  - cost-management
+  - lifecycle
+  - decommission
+  - cascade
+  - automation
+metadata: {}

@@ -1,0 +1,43 @@
+title: Cost Forecasting for Budget Planning
+uuid: uc-b038a7fd-befc-408d-9b5b-1e0755cd7ebf
+handle: cost/prod/cost-forecasting
+scenario:
+  description: >
+    The operator queries cost tracking for a forecast of next month's
+    spending based on historical trends. The forecast accounts for
+    seasonality, growth patterns, and the current cost model's rates. The
+    output includes a projected range (optimistic, expected, pessimistic)
+    per cluster, per project, and per cost category. The operator uses
+    this data for quarterly budget planning and to identify projects
+    trending toward their budget threshold.
+  actor:
+    persona: platform-operator
+    profile: prod
+  intent: Project future costs from historical trends to support budget planning and early budget-threshold warnings
+  success_criteria:
+    - Forecast is generated from historical cost data and current rates
+    - Output includes projected range per cluster, project, and cost category
+    - Projects trending toward budget thresholds are flagged
+    - Forecast data is available for integration into financial planning tools
+  dimensions:
+    lifecycle_phase: drift_detection
+    resource_complexity: composite_service
+    policy_complexity: system_defaults_only
+    provider_landscape: single_eligible
+    governance_context: standard_governance
+    failure_mode: happy_path
+  profile: prod
+  expected_domain_interactions:
+    - domain: cost/analytics
+      interaction: generate_cost_forecast
+    - domain: cost/budget
+      interaction: identify_budget_threshold_projects
+generated_by:
+  mode: authoring
+  source: human-authored
+tags:
+  - cost-management
+  - forecasting
+  - budget
+  - capacity-planning
+metadata: {}

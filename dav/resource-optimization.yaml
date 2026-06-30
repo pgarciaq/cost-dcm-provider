@@ -1,0 +1,48 @@
+title: Resource Optimization Recommendations
+uuid: uc-06709d88-440d-4cc8-ab67-fcdbaf6d8fc8
+handle: cost/prod/resource-optimization
+scenario:
+  description: >
+    Cost tracking analyzes historical CPU, memory, and storage utilization
+    across all containers, namespaces, and nodes in a production cluster.
+    It generates right-sizing recommendations — reduce over-provisioned
+    resource requests, increase under-provisioned ones, and consolidate
+    underutilized nodes. Each recommendation is quantified with projected
+    savings in dollar terms using the active cost model's rates. Operators
+    can query recommendations at the container, namespace, or node level
+    and prioritize changes by savings impact.
+  actor:
+    persona: platform-operator
+    profile: prod
+  intent: Identify over-provisioned resources and quantify savings opportunities across containers, namespaces, and nodes
+  success_criteria:
+    - Recommendations are generated from historical utilization data
+    - Each recommendation includes current vs recommended resource values
+    - Projected savings are calculated in dollar terms using active rates
+    - Recommendations are queryable at container, namespace, and node levels
+    - Operators can sort by projected savings to prioritize high-impact changes
+  dimensions:
+    lifecycle_phase: modification
+    resource_complexity: composite_service
+    policy_complexity: system_defaults_only
+    provider_landscape: single_eligible
+    governance_context: standard_governance
+    failure_mode: happy_path
+  profile: prod
+  expected_domain_interactions:
+    - domain: cost/optimization
+      interaction: generate_rightsizing_recommendations
+    - domain: cost/optimization
+      interaction: query_recommendations_by_entity
+generated_by:
+  mode: authoring
+  source: human-authored
+tags:
+  - cost-management
+  - optimization
+  - right-sizing
+  - savings
+  - containers
+  - namespaces
+  - nodes
+metadata: {}

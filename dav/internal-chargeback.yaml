@@ -1,0 +1,45 @@
+title: Internal Chargeback with Markup
+uuid: uc-c185fdf9-50de-43d9-b631-5a6acd16323e
+handle: cost/prod/internal-chargeback
+scenario:
+  description: >
+    The operator configures cost tracking with a 15% markup and
+    memory-weighted overhead distribution for production clusters used in
+    internal chargeback. Tenants see their costs with markup applied.
+    Finance extracts per-tenant cost data for journal entries and internal
+    billing. The full audit trail — rate definitions, markup percentage,
+    distribution method, and every cost calculation — is preserved for
+    compliance review.
+  actor:
+    persona: platform-operator
+    profile: prod
+  intent: Implement auditable internal chargeback where tenants see their true cost including markup and distributed overhead
+  success_criteria:
+    - Production clusters with chargeback enabled receive cost tracking with markup automatically
+    - Tenants see per-namespace costs with markup and distributed overhead
+    - Finance can extract aggregate cost data across all clusters
+    - Complete audit trail of rate definitions and cost calculations is available
+  dimensions:
+    lifecycle_phase: new_request
+    resource_complexity: composite_service
+    policy_complexity: multi_policy_chain
+    provider_landscape: single_eligible
+    governance_context: audit_heavy
+    failure_mode: happy_path
+  profile: prod
+  expected_domain_interactions:
+    - domain: cost/chargeback
+      interaction: create_cost_model_with_markup
+    - domain: cost/chargeback
+      interaction: export_tenant_cost_data
+generated_by:
+  mode: authoring
+  source: human-authored
+tags:
+  - cost-management
+  - chargeback
+  - tier-3
+  - markup
+  - audit
+  - finance
+metadata: {}

@@ -1,0 +1,47 @@
+title: Cost Estimation at Request Time
+uuid: uc-21b43005-b026-4a65-8215-ea87bf93e909
+handle: cost/standard/pre-provisioning-cost-estimate
+scenario:
+  description: >
+    A consumer requests a new cluster through DCM. Before the request is
+    confirmed, the policy engine queries the cost service for the
+    applicable rates and calculates a projected monthly cost based on the
+    requested node count, CPU, memory, and storage. The consumer sees the
+    estimate and can adjust the request before committing. This gives
+    consumers cost awareness at the point of decision, not after the bill
+    arrives.
+  actor:
+    persona: consumer
+    profile: prod
+  intent: Show consumers the projected monthly cost of a resource request before they commit to provisioning
+  success_criteria:
+    - Policy engine queries cost service for applicable rates during request evaluation
+    - Projected monthly cost is calculated from the resource specification
+    - Consumer sees the cost estimate before confirming the request
+    - Consumer can modify the request to reduce projected cost
+    - Estimate is based on the same rates that will be applied after provisioning
+  dimensions:
+    lifecycle_phase: new_request
+    resource_complexity: composite_service
+    policy_complexity: dynamic_conditional_flow
+    provider_landscape: single_eligible
+    governance_context: standard_governance
+    failure_mode: happy_path
+  profile: prod
+  expected_domain_interactions:
+    - domain: cost/analytics
+      interaction: query_applicable_rates
+    - domain: cost/analytics
+      interaction: calculate_projected_cost
+    - domain: compute/cluster
+      interaction: present_cost_estimate_to_consumer
+generated_by:
+  mode: authoring
+  source: human-authored
+tags:
+  - cost-management
+  - cost-estimation
+  - cross-service-type
+  - pre-provisioning
+  - consumer-experience
+metadata: {}

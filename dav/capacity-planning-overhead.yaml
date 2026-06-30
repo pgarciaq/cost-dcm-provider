@@ -1,0 +1,42 @@
+title: Platform Capacity Planning via Overhead Visibility
+uuid: uc-27cef4f1-ec12-4e22-a0fa-17190f6cf314
+handle: cost/prod/capacity-planning-overhead
+scenario:
+  description: >
+    An operator queries cost tracking to analyze how platform overhead is
+    distributed across a shared production cluster. The query reveals that
+    40% of worker node capacity is unallocated — idle resources consuming
+    power and rack space but serving no tenant workloads. The operator uses
+    this data to justify consolidating workloads onto fewer nodes or reducing
+    the node count.
+  actor:
+    persona: platform-operations
+    profile: prod
+  intent: Use overhead distribution data to identify idle capacity and drive infrastructure right-sizing decisions
+  success_criteria:
+    - Operator retrieves per-category overhead breakdown (worker unallocated, platform, storage, network)
+    - Unallocated capacity percentage is visible per node and per cluster
+    - Data drives a concrete capacity adjustment decision
+  dimensions:
+    lifecycle_phase: modification
+    resource_complexity: composite_service
+    policy_complexity: system_defaults_only
+    provider_landscape: single_eligible
+    governance_context: standard_governance
+    failure_mode: happy_path
+  profile: prod
+  expected_domain_interactions:
+    - domain: cost/distribution
+      interaction: query_overhead_breakdown
+    - domain: compute/scaling
+      interaction: capacity_adjustment_decision
+generated_by:
+  mode: authoring
+  source: human-authored
+tags:
+  - cost-management
+  - distribution
+  - tier-2
+  - capacity-planning
+  - overhead
+metadata: {}

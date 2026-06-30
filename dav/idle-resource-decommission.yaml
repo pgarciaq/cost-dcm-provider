@@ -1,0 +1,47 @@
+title: Idle Resource Detection for Decommissioning
+uuid: uc-aaf4447d-69b2-42fd-b0e6-fa723e73f48c
+handle: cost/prod/idle-resource-decommission
+scenario:
+  description: >
+    Cost tracking identifies resources with zero or near-zero utilization
+    over a configurable lookback window (e.g., 30 days). The wasted cost
+    is quantified using the active cost model's rates. A report is
+    generated listing idle resources by namespace, ranked by wasted spend.
+    The operator reviews the report and initiates decommissioning for
+    confirmed idle resources through DCM's standard lifecycle, reclaiming
+    capacity and reducing cost.
+  actor:
+    persona: platform-operator
+    profile: prod
+  intent: Identify resources wasting money through zero utilization and feed them into the decommission lifecycle
+  success_criteria:
+    - Resources with near-zero utilization are detected over the configured lookback window
+    - Wasted cost is quantified using active rates
+    - Idle resources are listed by namespace and ranked by wasted spend
+    - Operator can initiate decommissioning for confirmed idle resources
+    - Decommissioned resources reduce cost in subsequent reporting periods
+  dimensions:
+    lifecycle_phase: decommission
+    resource_complexity: composite_service
+    policy_complexity: system_defaults_only
+    provider_landscape: single_eligible
+    governance_context: standard_governance
+    failure_mode: happy_path
+  profile: prod
+  expected_domain_interactions:
+    - domain: cost/analytics
+      interaction: detect_idle_resources
+    - domain: cost/analytics
+      interaction: quantify_wasted_spend
+    - domain: compute/cluster
+      interaction: initiate_decommission
+generated_by:
+  mode: authoring
+  source: human-authored
+tags:
+  - cost-management
+  - idle-detection
+  - decommission
+  - waste-reduction
+  - cross-service-type
+metadata: {}

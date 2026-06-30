@@ -1,0 +1,43 @@
+title: Standard Production Cluster Cost Tracking
+uuid: uc-65bbf6ec-0ac4-49e3-b3a0-6b337c844bf3
+handle: cost/prod/standard-cost-tracking
+scenario:
+  description: >
+    Every production cluster automatically gets full cost tracking with
+    organization-standard rates for CPU, memory, storage, and node cost.
+    Metering data is collected, rates are applied, and platform overhead is
+    distributed across tenant projects. Tenants can query per-namespace cost
+    breakdowns showing infrastructure costs, supplementary costs, and
+    distributed platform overhead.
+  actor:
+    persona: platform-operator
+    profile: prod
+  intent: Every production cluster automatically gets full cost tracking with standard rates and overhead distribution
+  success_criteria:
+    - Production clusters receive cost tracking with the standard rate card automatically
+    - Tenants can query per-namespace cost breakdown
+    - Cost breakdown includes infrastructure, supplementary, and distributed overhead categories
+    - All costs are in the configured currency
+  dimensions:
+    lifecycle_phase: new_request
+    resource_complexity: composite_service
+    policy_complexity: system_defaults_only
+    provider_landscape: single_eligible
+    governance_context: standard_governance
+    failure_mode: happy_path
+  profile: prod
+  expected_domain_interactions:
+    - domain: cost/full-cost
+      interaction: create_cost_model_with_rates
+    - domain: cost/full-cost
+      interaction: query_namespace_cost_breakdown
+generated_by:
+  mode: authoring
+  source: human-authored
+tags:
+  - cost-management
+  - full-cost
+  - tier-3
+  - automation
+  - production
+metadata: {}

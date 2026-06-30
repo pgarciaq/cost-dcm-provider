@@ -1,0 +1,46 @@
+title: Cost Allocation Audit Trail
+uuid: uc-823da562-ff6e-46e0-a19f-1b0a02e1cec7
+handle: cost/prod/cost-audit-trail
+scenario:
+  description: >
+    A compliance auditor requests the full calculation chain for a specific
+    project's monthly cost. The cost service provides the complete audit
+    trail: raw utilization data (CPU hours, memory GB-hours, storage GB),
+    the applied rate card (rate per metric, effective dates), markup
+    percentage, distribution method and weights, and the final attributed
+    cost per category. Every rate change and cost model modification is
+    version-tracked. The auditor can reconstruct any historical cost
+    figure from first principles.
+  actor:
+    persona: compliance-auditor
+    profile: prod
+  intent: Provide a complete, reconstructable audit trail of cost calculations for compliance and financial review
+  success_criteria:
+    - Full calculation chain is available from raw utilization through final attributed cost
+    - Rate card and markup history are version-tracked with effective dates
+    - Distribution method and weights are documented for each calculation period
+    - Any historical cost figure can be independently reconstructed
+    - Audit trail meets financial compliance requirements
+  dimensions:
+    lifecycle_phase: new_request
+    resource_complexity: composite_service
+    policy_complexity: multi_policy_chain
+    provider_landscape: single_eligible
+    governance_context: audit_heavy
+    failure_mode: happy_path
+  profile: prod
+  expected_domain_interactions:
+    - domain: cost/audit
+      interaction: export_cost_calculation_chain
+    - domain: cost/audit
+      interaction: query_rate_change_history
+generated_by:
+  mode: authoring
+  source: human-authored
+tags:
+  - cost-management
+  - audit
+  - compliance
+  - chargeback
+  - financial-governance
+metadata: {}
